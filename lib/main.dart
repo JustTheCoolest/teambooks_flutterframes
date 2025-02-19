@@ -6,6 +6,7 @@ void main() {
   runApp(const MyApp());
 }
 
+// Task: Colour palette of app
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -37,6 +38,7 @@ class MyHomePage extends StatelessWidget {
       body: ListView(
         children: const <Widget>[
           Intro(),
+          GenresPieChart(),
           SponsorWidget(),
           LeaderboardWidget(),
           // Add more widgets here
@@ -113,6 +115,50 @@ class MilestoneProgress extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// Task: Colour Palette of pie chart
+class GenresPieChart extends StatelessWidget {
+  const GenresPieChart({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<String, int> genres = fetchGenres();
+    return Row(
+      children: [
+        Pie(genres),
+        Column(
+          children: genres.keys.map((genre) {
+            return Text('$genre: ${genres[genre]}', style: const TextStyle(fontWeight: FontWeight.bold));
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+// Assuming fetchGenres() is defined somewhere in your code
+Map<String, int> fetchGenres() {
+  // Fetch the genres data from the server or any other source
+  return {
+    'Fiction': 10,
+    'Non-Fiction': 15,
+    'Science': 5,
+    'History': 8,
+  };
+}
+
+// Assuming Pie is a widget defined somewhere in your code
+class Pie extends StatelessWidget {
+  final Map<String, int> genres;
+
+  const Pie(this.genres, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Build the pie chart using the genres data
+    return Container(); // Replace with actual pie chart implementation
   }
 }
 
