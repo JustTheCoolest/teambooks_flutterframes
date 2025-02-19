@@ -53,7 +53,7 @@ class Intro extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: AssetImage('assets/images/intro.jpg'),
+          image: AssetImage('images/intro.jpg'),
           fit: BoxFit.cover,
         ),
       ),
