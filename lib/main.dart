@@ -39,9 +39,6 @@ class MyHomePage extends StatelessWidget {
         children: const <Widget>[
           Intro(),
           GenresPieChart(),
-          SponsorWidget(),
-          LeaderboardWidget(),
-          // Add more widgets here
         ],
       ),
     );
@@ -76,7 +73,7 @@ class Intro extends StatelessWidget {
   }
 }
 
-int fetchCollected(){
+int fetchCollected() {
   // Task: Fetch the number of books collected from the server
   return 40;
 }
@@ -85,7 +82,7 @@ class MilestoneProgress extends StatelessWidget {
   late int collected;
   static const int target = constants.target_milestone;
 
-  MilestoneProgress({super.key}){
+  MilestoneProgress({super.key}) {
     collected = fetchCollected();
     // Flag: Async Await?!
   }
@@ -118,26 +115,6 @@ class MilestoneProgress extends StatelessWidget {
   }
 }
 
-// Task: Colour Palette of pie chart
-class GenresPieChart extends StatelessWidget {
-  const GenresPieChart({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final Map<String, int> genres = fetchGenres();
-    return Row(
-      children: [
-        Pie(genres),
-        Column(
-          children: genres.keys.map((genre) {
-            return Text('$genre: ${genres[genre]}', style: const TextStyle(fontWeight: FontWeight.bold));
-          }).toList(),
-        ),
-      ],
-    );
-  }
-}
-
 // Assuming fetchGenres() is defined somewhere in your code
 Map<String, int> fetchGenres() {
   // Fetch the genres data from the server or any other source
@@ -146,6 +123,16 @@ Map<String, int> fetchGenres() {
     'Non-Fiction': 15,
     'Science': 5,
     'History': 8,
+  };
+}
+
+Map<String, Color> assignColors(Map<String, int> genres) {
+  // Task: Assign a color to each genre
+  return {
+    'Fiction': Colors.blue,
+    'Non-Fiction': Colors.green,
+    'Science': Colors.red,
+    'History': Colors.orange,
   };
 }
 
@@ -162,45 +149,65 @@ class Pie extends StatelessWidget {
   }
 }
 
-class SponsorWidget extends StatelessWidget {
-  const SponsorWidget({super.key});
+class ColorCircle extends StatelessWidget {
+  final Color color;
+
+  const ColorCircle(this.color, {super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
-          Text(
-            'Sponsors',
-            style: TextStyle(
-                fontSize: constants.fontSize, fontWeight: FontWeight.bold),
-          ),
-          // Add more content here
-        ],
+      width: 16.0,
+      height: 16.0,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
       ),
     );
   }
 }
 
-class LeaderboardWidget extends StatelessWidget {
-  const LeaderboardWidget({super.key});
+// Task: Colour Palette of pie chart
+class GenresPieChart extends StatelessWidget {
+  const GenresPieChart({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
-          Text(
-            'Leaderboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          // Add more content here
-        ],
-      ),
+    final Map<String, int> genres = fetchGenres();
+    final Map<String, Color> genreColors = assignColors(genres);
+    return Row(
+      children: [
+        Pie(genres),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: genres.keys.map((genre) {
+                return Row(
+                  // Flag: This is very confusing in desktop site
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        ColorCircle(genreColors[genre]!),
+                        const SizedBox(width: 8.0), // Adds some horizontal spacing
+                        Text(
+                          genre,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      genres[genre].toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ]
+                );
+              }).toList(),
+            )
+          )
+        )
+      ],
     );
   }
 }
