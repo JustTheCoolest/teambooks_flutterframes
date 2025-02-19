@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'constants.dart' as constants;
 
@@ -50,6 +51,7 @@ class Intro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Task: Padding for the items inside the image
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
@@ -59,10 +61,11 @@ class Intro extends StatelessWidget {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const <Widget>[
+        children: <Widget>[
           Text(
             constants.introText,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: constants.fontSize, fontWeight: FontWeight.bold),
           ),
           MilestoneProgress(),
         ],
@@ -71,21 +74,42 @@ class Intro extends StatelessWidget {
   }
 }
 
+int fetchCollected(){
+  // Task: Fetch the number of books collected from the server
+  return 40;
+}
+
 class MilestoneProgress extends StatelessWidget {
-  const MilestoneProgress({super.key});
+  late int collected;
+  static const int target = constants.target_milestone;
+
+  MilestoneProgress({super.key}){
+    collected = fetchCollected();
+    // Flag: Async Await?!
+  }
 
   @override
   Widget build(BuildContext context) {
+    final double progress = collected / target;
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
+        children: [
           Text(
-            'Milestone Progress',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            'Books collected: ${(progress * 100).toStringAsFixed(0)}%',
+            style: const TextStyle(fontSize: 16.0),
           ),
-          // Add more content here
+          LinearProgressIndicator(
+            value: progress,
+          ),
+          Text(
+            "$collected out of $target books",
+            style: const TextStyle(fontSize: 14.0),
+          ),
         ],
       ),
     );
@@ -104,7 +128,8 @@ class SponsorWidget extends StatelessWidget {
         children: const <Widget>[
           Text(
             'Sponsors',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: constants.fontSize, fontWeight: FontWeight.bold),
           ),
           // Add more content here
         ],
