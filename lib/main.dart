@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'constants.dart' as constants;
 
 void main() {
   runApp(const MyApp());
@@ -34,9 +35,57 @@ class MyHomePage extends StatelessWidget {
       ),
       body: ListView(
         children: const <Widget>[
+          Intro(),
           SponsorWidget(),
           LeaderboardWidget(),
           // Add more widgets here
+        ],
+      ),
+    );
+  }
+}
+
+class Intro extends StatelessWidget {
+  const Intro({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/intro.jpg'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const <Widget>[
+          Text(
+            constants.introText,
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          MilestoneProgress(),
+        ],
+      ),
+    );
+  }
+}
+
+class MilestoneProgress extends StatelessWidget {
+  const MilestoneProgress({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const <Widget>[
+          Text(
+            'Milestone Progress',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          // Add more content here
         ],
       ),
     );

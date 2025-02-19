@@ -1,0 +1,1 @@
+const String introText = 'Welcome to the 2021 Hacktoberfest!';
