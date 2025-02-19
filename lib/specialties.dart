@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class SpecialtiesPage extends StatelessWidget {
+  const SpecialtiesPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

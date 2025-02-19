@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class BookPickupPage extends StatelessWidget {
+  const BookPickupPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

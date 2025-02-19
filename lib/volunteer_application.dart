@@ -13,6 +13,8 @@ class VolunteerApplicationPage extends StatelessWidget {
     'Marketing'
   ];
 
+  const VolunteerApplicationPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

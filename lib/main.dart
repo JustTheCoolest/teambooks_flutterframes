@@ -13,6 +13,8 @@ void main() {
 }
 
 class TeamBooksApp extends StatelessWidget {
+  const TeamBooksApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -38,6 +40,8 @@ class TeamBooksApp extends StatelessWidget {
 }
 
 class TeamBooksHomePage extends StatelessWidget {
+  const TeamBooksHomePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -264,6 +268,8 @@ class TeamBooksHomePage extends StatelessWidget {
 
 
 class DonationsPage extends StatelessWidget {
+  const DonationsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

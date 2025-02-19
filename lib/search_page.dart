@@ -10,6 +10,8 @@ class SearchPage extends StatelessWidget {
     'The Innovators'
   ];
 
+  const SearchPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

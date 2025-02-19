@@ -10,6 +10,8 @@ class RecommendationEnginePage extends StatelessWidget {
   final List<String> frequentlyViewedGenres = ['Engineering', 'Medical', 'Drama', 'Self-Help', 'Business'];
   final List<String> searchHistory = ['Cinderella', 'Snow White', 'Becoming', 'Investing', 'Harry Potter'];
 
+  const RecommendationEnginePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
