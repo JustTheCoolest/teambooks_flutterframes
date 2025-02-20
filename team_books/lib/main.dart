@@ -7,8 +7,11 @@ import 'personal_details.dart';
 import 'specialties.dart';
 import 'search_page.dart';
 import 'recommendation_engine.dart';
+import 'services/database_service.dart';
 
-void main() {
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures async operations before running the app
+  await DatabaseService.connect(); // Connect to MongoDB
   runApp(TeamBooksApp());
 }
 
