@@ -15,7 +15,7 @@ origins = [
 # Task: Function calling
 # https://ai.google.dev/gemini-api/docs/function-calling/tutorial?lang=python#generate-function-call
 
-GEMINI_API_KEY = "AIzaSyDYX_YT0EtqbtMzGUsVrCdLqzVXMzaPw_k"
+GEMINI_API_KEY = open(".key").read().strip()
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -31,7 +31,7 @@ app.add_middleware(
 )
 
 def process_image(file: UploadFile):
-    """Handles image saving, OCR processing, and cleanup."""
+    """Handles image saving, OCR processing, and cleanup. PADDLEOCR"""
     file_location = f"temp_{file.filename}"
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)

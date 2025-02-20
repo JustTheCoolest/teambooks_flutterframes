@@ -142,7 +142,6 @@ class TeamBooksHomePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _headerSection(context),
-            _progressSection(),
             _howItWorksSection(),
             _donationChartsSection(),
             _sponsorsSection(),
@@ -156,7 +155,7 @@ class TeamBooksHomePage extends StatelessWidget {
 
   Widget _headerSection(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       decoration: BoxDecoration(
         image: DecorationImage(
           image: const AssetImage('header_image.jpg'), // Replace with your image
@@ -171,68 +170,61 @@ class TeamBooksHomePage extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/volunteer_application');
-            },
-            child: const Text("I want to help"),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/donations');
-            },
-            child: const Text("Donate"),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/search');
-            },
-            child: const Text("Search"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/scan_book');
-            },
-            child: const Text('Scan Book'),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  "Books collected: 60%",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                const SizedBox(height: 10),
+                LinearProgressIndicator(
+                  value: 0.6,
+                  backgroundColor: Colors.grey[300],
+                  color: Colors.green,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "4,800 out of 8,000 books",
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-
-  Widget _progressSection() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          const Text("Books Collected: 4,800 out of 8,000 (60%)",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          _booksBarChart(),
-        ],
-      ),
-    );
-  }
-
-  Widget _booksBarChart() {
-    return SizedBox(
-      height: 200,
-      child: BarChart(
-        BarChartData(
-          barGroups: [
-            BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 60, color: Colors.blue)]),
-            BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 50, color: Colors.green)]),
-          ],
-          titlesData: const FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _booksBarChart() {
+  //   return SizedBox(
+  //     height: 200,
+  //     child: BarChart(
+  //       BarChartData(
+  //         barGroups: [
+  //           BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 60, color: Colors.blue)]),
+  //           BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 50, color: Colors.green)]),
+  //         ],
+  //         titlesData: const FlTitlesData(
+  //           leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _howItWorksSection() {
     return const Padding(
