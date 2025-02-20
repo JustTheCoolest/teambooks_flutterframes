@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data'; // For web file upload
+import 'constants.dart' as constants;
 
 void main() {
   runApp(TeamBooksApp());
@@ -38,8 +39,9 @@ class _ScanBookPageState extends State<ScanBookPage> {
       try {
         final result = await _apiService.uploadImage(image);
         setState(() {
-          _result = 'Extracted Text: ${result['extracted_text']}\n\n'
-                   'Book Details: ${result['book_details']}';
+          _result =
+              'Extracted Text: ${result['extracted_text']}\n\n'
+              'Book Details: ${result['book_details']}';
         });
       } catch (e) {
         setState(() => _result = 'Error: $e');
@@ -61,14 +63,9 @@ class _ScanBookPageState extends State<ScanBookPage> {
               onPressed: _isLoading ? null : _pickAndUploadImage,
               child: Text(_isLoading ? 'Processing...' : 'Take Picture'),
             ),
-            if (_isLoading)
-              const CircularProgressIndicator(),
+            if (_isLoading) const CircularProgressIndicator(),
             if (_result != null)
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Text(_result!),
-                ),
-              ),
+              Expanded(child: SingleChildScrollView(child: Text(_result!))),
           ],
         ),
       ),
@@ -85,7 +82,9 @@ class ApiService {
     if (kIsWeb) {
       // For web, read the file as bytes
       Uint8List bytes = await image.readAsBytes();
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: image.name));
+      request.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: image.name),
+      );
     } else {
       // For mobile, use fromPath
       request.files.add(await http.MultipartFile.fromPath('file', image.path));
@@ -93,13 +92,17 @@ class ApiService {
 
     var response = await request.send();
     var responseData = await response.stream.bytesToString();
-    
+
     if (response.statusCode == 200) {
       return json.decode(responseData);
     } else {
       throw Exception('Failed to upload image');
     }
   }
+}
+
+double fetchCurrentBooks() {
+  return 10000;
 }
 
 class TeamBooksApp extends StatelessWidget {
@@ -153,58 +156,79 @@ class TeamBooksHomePage extends StatelessWidget {
     );
   }
 
+  Widget _progressBar() {
+      final double currentBooks = fetchCurrentBooks();
+      const totalBooks = constants.target_milestone;
+      final double progress = currentBooks / totalBooks;
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(50),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              "Books collected: ${(progress * 100).toStringAsFixed(0)}%",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey[300],
+              color: Colors.green,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "$currentBooks out of $totalBooks books",
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
   Widget _headerSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: const AssetImage('header_image.jpg'), // Replace with your image
+          image: const AssetImage(
+            'header_image.jpg',
+          ), // Replace with your image
           fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken),
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.5),
+            BlendMode.darken,
+          ),
         ),
       ),
       child: Column(
         children: [
+          // Task: Proper message
           const Text(
-            "Join the team. Help us donate 1 million books.",
+            "Join the team. Help us donate 15,000 books.",
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(50),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Text(
-                  "Books collected: 60%",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                const SizedBox(height: 10),
-                LinearProgressIndicator(
-                  value: 0.6,
-                  backgroundColor: Colors.grey[300],
-                  color: Colors.green,
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  "4,800 out of 8,000 books",
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
+          _progressBar(),
         ],
       ),
     );
@@ -231,9 +255,14 @@ class TeamBooksHomePage extends StatelessWidget {
       padding: EdgeInsets.all(16),
       child: Column(
         children: [
-          Text("How It Works", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            "How It Works",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           SizedBox(height: 10),
-          Text("We partner with local schools and libraries to provide free books."),
+          Text(
+            "We partner with local schools and libraries to provide free books.",
+          ),
           Text("You can volunteer to collect books or make a donation."),
         ],
       ),
@@ -245,7 +274,10 @@ class TeamBooksHomePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Text("Category-Wise Donations", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            "Category-Wise Donations",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 10),
           _categoryPieChart(),
         ],
@@ -259,11 +291,31 @@ class TeamBooksHomePage extends StatelessWidget {
       child: PieChart(
         PieChartData(
           sections: [
-            PieChartSectionData(value: 5000, title: "Science Fiction", color: Colors.red),
-            PieChartSectionData(value: 2500, title: "Self-help", color: Colors.blue),
-            PieChartSectionData(value: 1500, title: "Engineering", color: Colors.green),
-            PieChartSectionData(value: 7000, title: "Medical", color: Colors.purple),
-            PieChartSectionData(value: 3000, title: "Children’s books", color: Colors.orange),
+            PieChartSectionData(
+              value: 5000,
+              title: "Science Fiction",
+              color: Colors.red,
+            ),
+            PieChartSectionData(
+              value: 2500,
+              title: "Self-help",
+              color: Colors.blue,
+            ),
+            PieChartSectionData(
+              value: 1500,
+              title: "Engineering",
+              color: Colors.green,
+            ),
+            PieChartSectionData(
+              value: 7000,
+              title: "Medical",
+              color: Colors.purple,
+            ),
+            PieChartSectionData(
+              value: 3000,
+              title: "Children’s books",
+              color: Colors.orange,
+            ),
           ],
         ),
       ),
@@ -275,7 +327,10 @@ class TeamBooksHomePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Text("Our Sponsors", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            "Our Sponsors",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           _donationLeaderboard(),
         ],
       ),
@@ -292,12 +347,13 @@ class TeamBooksHomePage extends StatelessWidget {
     ];
 
     return Column(
-      children: leaderboard.map((entry) {
-        return ListTile(
-          title: Text(entry["name"]),
-          trailing: Text(entry["amount"]),
-        );
-      }).toList(),
+      children:
+          leaderboard.map((entry) {
+            return ListTile(
+              title: Text(entry["name"]),
+              trailing: Text(entry["amount"]),
+            );
+          }).toList(),
     );
   }
 
@@ -306,10 +362,22 @@ class TeamBooksHomePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Text("What people say about us", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          _testimonialCard("Bella", "Wonderful Initiative! I hope there were more of these around the world."),
-          _testimonialCard("Gloria Ochoa", "I can't wait to see the library open for our community."),
-          _testimonialCard("Luis Mejia", "This is a great initiative. Our community will benefit a lot."),
+          const Text(
+            "What people say about us",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          _testimonialCard(
+            "Bella",
+            "Wonderful Initiative! I hope there were more of these around the world.",
+          ),
+          _testimonialCard(
+            "Gloria Ochoa",
+            "I can't wait to see the library open for our community.",
+          ),
+          _testimonialCard(
+            "Luis Mejia",
+            "This is a great initiative. Our community will benefit a lot.",
+          ),
         ],
       ),
     );
@@ -330,7 +398,10 @@ class TeamBooksHomePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Text("Volunteer Opportunities", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            "Volunteer Opportunities",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           _volunteerCategory(context, "Web Development"),
           _volunteerCategory(context, "Marketing"),
           _volunteerCategory(context, "Finance"),
@@ -366,12 +437,18 @@ class DonationsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Give Hope, Change Lives – Your Donation Makes a Difference!",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Give Hope, Change Lives – Your Donation Makes a Difference!",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
-            TextField(decoration: const InputDecoration(labelText: "Full Name")),
+            TextField(
+              decoration: const InputDecoration(labelText: "Full Name"),
+            ),
             TextField(decoration: const InputDecoration(labelText: "Email")),
-            TextField(decoration: const InputDecoration(labelText: "Phone Number")),
+            TextField(
+              decoration: const InputDecoration(labelText: "Phone Number"),
+            ),
             TextField(decoration: const InputDecoration(labelText: "Address")),
             const SizedBox(height: 20),
             ElevatedButton(
