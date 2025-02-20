@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class SearchPage extends StatelessWidget {
-  final List<String> genres = ['Engineering', 'Medical', 'Business', 'Art', 'Science', 'Biographies', 'Technology'];
-  final List<String> recommendations = [
+  static const List<String> genres = ['Engineering', 'Medical', 'Business', 'Art', 'Science', 'Biographies', 'Technology'];
+  static const List<String> recommendations = [
     'How to Avoid a Climate Disaster',
     'The Art of Doing Science and Engineering',
     'The Lean Startup',

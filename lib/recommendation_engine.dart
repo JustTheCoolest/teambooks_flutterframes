@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 class RecommendationEnginePage extends StatelessWidget {
-  final List<String> userRecommendations = [
+  static const List<String> userRecommendations = [
     'The Hunger Games',
     'Kid’s Stories 101',
     'The Da Vinci Code',
   ];
 
-  final List<String> frequentlyViewedGenres = ['Engineering', 'Medical', 'Drama', 'Self-Help', 'Business'];
-  final List<String> searchHistory = ['Cinderella', 'Snow White', 'Becoming', 'Investing', 'Harry Potter'];
+  static const List<String> frequentlyViewedGenres = ['Engineering', 'Medical', 'Drama', 'Self-Help', 'Business'];
+  static const List<String> searchHistory = ['Cinderella', 'Snow White', 'Becoming', 'Investing', 'Harry Potter'];
 
   const RecommendationEnginePage({super.key});
 

@@ -4,6 +4,13 @@ import uvicorn
 import shutil
 import os
 from google import genai
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = [
+    "http://localhost",
+    "https://localhost",
+    "http://localhost:8080",
+]
 
 # Task: Function calling
 # https://ai.google.dev/gemini-api/docs/function-calling/tutorial?lang=python#generate-function-call
@@ -14,6 +21,14 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 app = FastAPI()
 ocr = PaddleOCR(use_angle_cls=True, lang="en")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def process_image(file: UploadFile):
     """Handles image saving, OCR processing, and cleanup."""

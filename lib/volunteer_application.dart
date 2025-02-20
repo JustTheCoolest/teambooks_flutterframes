@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class VolunteerApplicationPage extends StatelessWidget {
-  final List<String> categories = [
+  static const List<String> categories = [
     'Web Development',
     'Sponsorships',
     'Finance',
