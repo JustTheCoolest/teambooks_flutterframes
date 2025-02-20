@@ -5,6 +5,7 @@ import shutil
 import os
 from google import genai
 from fastapi.middleware.cors import CORSMiddleware
+import data
 
 origins = [
     "http://localhost",
@@ -50,7 +51,7 @@ def get_book_details(text: str):
     )
 
     candidate = response.candidates[0]
-    print(candidate)
+    # print(candidate)
     # Extract the text from the parts list
     parts = candidate.content.parts
     book_details = " ".join([part.text for part in parts if part.text])
@@ -62,6 +63,12 @@ async def upload_file(file: UploadFile = File(...)):
     extracted_text = process_image(file)
     book_details = get_book_details(extracted_text)
     return {"extracted_text": extracted_text, "book_details": book_details}
+
+@app.get("/books/")
+async def get_books():
+    import time
+    time.sleep(3) # Simulate a slow API
+    return {"current_books": data.current_books}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

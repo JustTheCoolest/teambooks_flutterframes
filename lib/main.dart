@@ -101,8 +101,15 @@ class ApiService {
   }
 }
 
-double fetchCurrentBooks() {
-  return 10000;
+Future<double> fetchCurrentBooks() async {
+  final response = await http.get(Uri.parse('${constants.backend_url}/books/'));
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    return data['current_books'].toDouble();
+  } else {
+    throw Exception('Failed to load current books');
+  }
 }
 
 class TeamBooksApp extends StatelessWidget {
@@ -155,50 +162,64 @@ class TeamBooksHomePage extends StatelessWidget {
       ),
     );
   }
-
+  
   Widget _progressBar() {
-      final double currentBooks = fetchCurrentBooks();
-      const totalBooks = constants.target_milestone;
-      final double progress = currentBooks / totalBooks;
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(50),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              "Books collected: ${(progress * 100).toStringAsFixed(0)}%",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+    return FutureBuilder<double>(
+      future: fetchCurrentBooks(),
+      builder: (context, snapshot) {
+        double currentBooks;
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+        currentBooks = snapshot.data!;
+        const totalBooks = constants.target_milestone;
+        final double progress = currentBooks / totalBooks;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(50),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: Offset(0, 4),
               ),
-            ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.grey[300],
-              color: Colors.green,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              "$currentBooks out of $totalBooks books",
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                "Books collected: ${(progress * 100).toStringAsFixed(0)}%",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.grey[300],
+                color: Colors.green,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "$currentBooks out of $totalBooks books",
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _headerSection(BuildContext context) {
     return Container(
@@ -219,7 +240,7 @@ class TeamBooksHomePage extends StatelessWidget {
         children: [
           // Task: Proper message
           const Text(
-            "Join the team. Help us donate 15,000 books.",
+            constants.introText,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 24,
