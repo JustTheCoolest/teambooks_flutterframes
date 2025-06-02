@@ -28,6 +28,38 @@ Future<double> fetchCurrentBooks() async {
   }
 }
 
+Future<List<PieChartSectionData>> fetchDonationCategories() async {
+  // TODO: Replace with actual backend call
+  await Future.delayed(const Duration(milliseconds: 500));
+  return [
+    PieChartSectionData(
+      value: 5000,
+      title: "Science Fiction",
+      color: Colors.red,
+    ),
+    PieChartSectionData(
+      value: 2500,
+      title: "Self-help",
+      color: Colors.blue,
+    ),
+    PieChartSectionData(
+      value: 1500,
+      title: "Engineering",
+      color: Colors.green,
+    ),
+    PieChartSectionData(
+      value: 7000,
+      title: "Medical",
+      color: Colors.purple,
+    ),
+    PieChartSectionData(
+      value: 3000,
+      title: "Children’s books",
+      color: Colors.orange,
+    ),
+  ];
+}
+
 class TeamBooksApp extends StatelessWidget {
   const TeamBooksApp({super.key});
 
@@ -188,19 +220,18 @@ class TeamBooksHomePage extends StatelessWidget {
   // }
 
   Widget _howItWorksSection() {
-    return const Padding(
-      padding: EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Text(
+          const Text(
             "How It Works",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 10),
-          Text(
-            "We partner with local schools and libraries to provide free books.",
-          ),
-          Text("You can volunteer to collect books or make a donation."),
+          const SizedBox(height: 10),
+          Column(
+            children: constants.howItWorksLines.map((line) => Text(line)).toList(),
+          )
         ],
       ),
     );
@@ -223,39 +254,21 @@ class TeamBooksHomePage extends StatelessWidget {
   }
 
   Widget _categoryPieChart() {
-    return SizedBox(
-      height: 200,
-      child: PieChart(
-        PieChartData(
-          sections: [
-            PieChartSectionData(
-              value: 5000,
-              title: "Science Fiction",
-              color: Colors.red,
+    return FutureBuilder<List<PieChartSectionData>>(
+      future: fetchDonationCategories(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return SizedBox(
+          height: 200,
+          child: PieChart(
+            PieChartData(
+              sections: snapshot.data!,
             ),
-            PieChartSectionData(
-              value: 2500,
-              title: "Self-help",
-              color: Colors.blue,
-            ),
-            PieChartSectionData(
-              value: 1500,
-              title: "Engineering",
-              color: Colors.green,
-            ),
-            PieChartSectionData(
-              value: 7000,
-              title: "Medical",
-              color: Colors.purple,
-            ),
-            PieChartSectionData(
-              value: 3000,
-              title: "Children’s books",
-              color: Colors.orange,
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
