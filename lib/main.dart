@@ -228,6 +228,8 @@ class TeamBooksHomePage extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
+          const Text("(in number of books)"),
+          const SizedBox(height: 42),
           _categoryPieChartWithLegend(),
         ],
       ),
@@ -280,7 +282,6 @@ class TeamBooksHomePage extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 32), 
             SizedBox(
               height: isSmallScreen ? 180 : 220,
               width: isSmallScreen ? 180 : 220,
