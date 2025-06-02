@@ -28,35 +28,15 @@ Future<double> fetchCurrentBooks() async {
   }
 }
 
-Future<List<PieChartSectionData>> fetchDonationCategories() async {
+Future<List<Map<String, dynamic>>> fetchDonationCategories() async {
   // TODO: Replace with actual backend call
   await Future.delayed(const Duration(milliseconds: 500));
   return [
-    PieChartSectionData(
-      value: 5000,
-      title: "Science Fiction",
-      color: Colors.red,
-    ),
-    PieChartSectionData(
-      value: 2500,
-      title: "Self-help",
-      color: Colors.blue,
-    ),
-    PieChartSectionData(
-      value: 1500,
-      title: "Engineering",
-      color: Colors.green,
-    ),
-    PieChartSectionData(
-      value: 7000,
-      title: "Medical",
-      color: Colors.purple,
-    ),
-    PieChartSectionData(
-      value: 3000,
-      title: "Children’s books",
-      color: Colors.orange,
-    ),
+    {"value": 5000, "title": "Science Fiction", "color": 0xFFFF0000},
+    {"value": 2500, "title": "Self-help", "color": 0xFF0000FF},
+    {"value": 1500, "title": "Engineering", "color": 0xFF00FF00},
+    {"value": 7000, "title": "Medical", "color": 0xFF800080},
+    {"value": 3000, "title": "Children’s books", "color": 0xFFFFA500},
   ];
 }
 
@@ -202,6 +182,7 @@ class TeamBooksHomePage extends StatelessWidget {
       ),
     );
   }
+
   // Widget _booksBarChart() {
   //   return SizedBox(
   //     height: 200,
@@ -247,28 +228,101 @@ class TeamBooksHomePage extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-          _categoryPieChart(),
+          _categoryPieChartWithLegend(),
         ],
       ),
     );
   }
 
-  Widget _categoryPieChart() {
-    return FutureBuilder<List<PieChartSectionData>>(
+  bool useWhiteText(Color background) {
+    // Calculate luminance to decide text color
+    return background.computeLuminance() < 0.5;
+  }
+
+  Widget _categoryPieChartWithLegend() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
       future: fetchDonationCategories(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        return SizedBox(
-          height: 200,
-          child: PieChart(
-            PieChartData(
-              sections: snapshot.data!,
+
+        final data = snapshot.data!;
+        final sections = data.map((cat) {
+          final color = Color(cat["color"]);
+          final value = cat["value"] * 1.0;
+          final title = cat["value"].toString();
+
+          return PieChartSectionData(
+            value: value,
+            color: color,
+            title: title,
+            radius: 60,
+            titleStyle: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: useWhiteText(color) ? Colors.white : Colors.black,
+              shadows: [
+                Shadow(
+                  blurRadius: 2,
+                  color: Colors.black26,
+                  offset: Offset(1, 1),
+                )
+              ],
             ),
-          ),
+            titlePositionPercentageOffset: 0.6, // Puts the number inside the section
+          );
+        }).toList();
+
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isSmallScreen = screenWidth < 400;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 32), 
+            SizedBox(
+              height: isSmallScreen ? 180 : 220,
+              width: isSmallScreen ? 180 : 220,
+              child: PieChart(
+                PieChartData(
+                  sections: sections,
+                  centerSpaceRadius: 40,
+                  startDegreeOffset: 180,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32), 
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
+              children: data
+                  .map((cat) =>
+                      _buildLegendItem(cat["title"], Color(cat["color"])))
+                  .toList(),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildLegendItem(String title, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(title, style: const TextStyle(fontSize: 13)),
+      ],
     );
   }
 
