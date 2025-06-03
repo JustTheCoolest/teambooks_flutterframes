@@ -63,6 +63,7 @@ class TeamBooksApp extends StatelessWidget {
         '/search': (context) => SearchPage(),
         '/recommendation_engine': (context) => RecommendationEnginePage(),
         '/scan_book': (context) => const ScanBookPage(),
+        '/volunteer_application': (context) => const VolunteerApplicationPage(),
       },
     );
   }
@@ -79,6 +80,10 @@ class TeamBooksHomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/volunteer_application'),
+              child: const Text('Apply as Volunteer'),
+            ),
             _headerSection(context),
             _howItWorksSection(),
             _donationChartsSection(),
