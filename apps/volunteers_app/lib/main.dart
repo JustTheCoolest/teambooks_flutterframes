@@ -4,6 +4,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 import 'package:volunteers_app/register_screen.dart';
 
@@ -15,7 +17,13 @@ import 'package:volunteers_app/register_screen.dart';
 /// The buttons use context.go() to navigate to each destination. On mobile
 /// devices, each destination is deep-linkable and on the web, can be navigated
 /// to using the address bar.
-void main() => runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(const MyApp());
+}
 
 /// The route configuration.
 final GoRouter _router = GoRouter(
@@ -30,6 +38,14 @@ final GoRouter _router = GoRouter(
           builder: (BuildContext context, GoRouterState state) {
             final String? id = state.pathParameters['id'];
             return DetailsScreen(id: id);
+          },
+        ),
+        GoRoute(path: 'register/:invitationId',
+          builder: (BuildContext context, GoRouterState state) {
+            final String? invitationId = state.pathParameters['invitationId'];
+            return RegisterScreen(
+              invitationId: invitationId,
+            );
           },
         ),
       ],
