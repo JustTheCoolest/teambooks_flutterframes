@@ -1,13 +1,20 @@
-import 'dart:math';
-
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void approveVolunteer({required String uid, required String email}) {
-  // Simulate a network call to approve the volunteer
-  Future.delayed(const Duration(seconds: 2), () {
-    print('Volunteer with UID: $uid and Email: $email approved.');
+  // Task: Check if exceptions are notified to the user
+  FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
+    if (!doc.exists) {
+      throw Exception('User does not exist');
+    }
+    final email_in_cloud = doc.data()?['email'];
+    if (email_in_cloud != email) {
+      throw Exception('Email does not match');
+    }
+  });
+  FirebaseFirestore.instance.collection('users').doc(uid).update({
+    'roles.volunteer': true,
   });
 }
 
