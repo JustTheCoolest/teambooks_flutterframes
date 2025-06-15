@@ -2,18 +2,17 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-void approveVolunteer({required String uid, required String email}) {
+Future<void> approveVolunteer({required String uid, required String email}) async {
   // Task: Check if exceptions are notified to the user
-  FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
-    if (!doc.exists) {
-      throw Exception('User does not exist');
-    }
-    final email_in_cloud = doc.data()?['email'];
-    if (email_in_cloud != email) {
-      throw Exception('Email does not match');
-    }
-  });
-  FirebaseFirestore.instance.collection('users').doc(uid).update({
+  final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+  if (!doc.exists) {
+    throw Exception('User does not exist');
+  }
+  final emailInCloud = doc.data()?['email'];
+  if (emailInCloud != email) {
+    throw Exception('Email does not match');
+  }
+  await FirebaseFirestore.instance.collection('users').doc(uid).update({
     'roles.volunteer': true,
   });
 }
@@ -177,14 +176,25 @@ class _ApproveExistingAccountFormState
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 // Handle the approval logic here
                 if (_formKey.currentState!.validate()) {
-                  approveVolunteer(
-                    uid: _uidController.text,
-                    email: _emailController.text,
-                  );
-                  Navigator.of(context).pop();
+                  try {
+                    await approveVolunteer(
+                      uid: _uidController.text,
+                      email: _emailController.text,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Volunteer approved')),
+                    );
+                    Navigator.of(context).pop(); // Pop only on success
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}')), // Display a cleaner error
+                    );
+                    // Optionally, don't pop the dialog on error, so the user can try again or see the error.
+                    // Navigator.of(context).pop(); 
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please correct the errors')),
