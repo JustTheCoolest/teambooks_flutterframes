@@ -1,5 +1,11 @@
 /*
 @public
+CloudFunction validateVolunteer(){
+  volunteerUID = getCurrentUserUID()
+  return firestore.exists((collection:volunteers)/(volunteerUID))
+}
+
+@public
 CloudFunction checkPhoneNumberExists(phone number) {
   return firestore.exists((collection:donors)/(phone number))
 }
@@ -50,24 +56,26 @@ CloudFunction addBookToCatalog(Donor Details, List[ISBNs]) {
   return Receipt
 }
 
-Button(`
-  text: 'Register Book',
-  onPressed: () {
-    FullScreenDialog(
-      Form(
-        (phone number ?? null).ifExists() ? showDonorDetails() : collectDonorDetails(),
-        Donor Details (anonymysable) {
-          Phone Number,
-          Name,
-          Company/ Apartment : Dynamic List with Create Option,
-        }
-        int Number Of Books {
-          ISBN : verify book details from API (),
-        }
-        onSubmit: call addBookToCatalog(Donor Details {phone number / full details}, List[ISBNs]) -> wait load -> show Receipt()
+ActualHome(
+  Button(
+    text: 'Register Book',
+    onPressed: () {
+      FullScreenDialog(
+        Form(
+          (phone number ?? null).ifExists() ? showDonorDetails() : collectDonorDetails(),
+          Donor Details (anonymysable) {
+            Phone Number,
+            Name,
+            Company/ Apartment : Dynamic List with Create Option,
+          }
+          int Number Of Books {
+            ISBN : verify book details from API (),
+          }
+          onSubmit: call addBookToCatalog(Donor Details {phone number / full details}, List[ISBNs]) -> wait load -> show Receipt()
+        )
       )
-    )
-  },
+    },
+  )
 )
 
 ShowReceipt(Receipt) {
@@ -75,4 +83,13 @@ ShowReceipt(Receipt) {
   Receipt,
   Button(text: 'Close', onPressed: closeDialog),
 } 
+
+AccessDeniedScreen{
+  show(UID) with instructions to paste in form,
+  prompt form filling in case user didn't come from the form,
+}
+
+Home(
+  validateVolunteer() ? ActualHome() : AccessDeniedScreen(),
+)
 */
