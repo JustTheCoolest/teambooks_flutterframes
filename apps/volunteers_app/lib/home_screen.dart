@@ -1,40 +1,27 @@
 import 'package:flutter/material.dart';
 import 'actual_home_screen.dart';
 import 'access_denied_screen.dart';
-import 'services/firebase_service.dart'; // Updated to use FirebaseService directly
+import 'services/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // For User type
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final FirebaseService _firebaseService = FirebaseService();
-  Future<bool>? _validationFuture;
-  String? _errorMessage;
-  User? _currentUser;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentUser = _firebaseService.currentUser; // Get current user at init
-    _validateVolunteer();
-  }
-
-  void _validateVolunteer() {
-    setState(() {
-      _errorMessage = null; // Clear previous errors
-      _validationFuture = _firebaseService.validateCurrentVolunteer();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Instantiate FirebaseService here. As this is a StatelessWidget,
+    // if FirebaseService had significant internal state or was expensive to create,
+    // it would ideally be provided through a DI mechanism or passed via constructor.
+    // For this case, creating it locally in build is done to avoid class variables.
+    final FirebaseService firebaseService = FirebaseService();
+    final User? currentUser = firebaseService.currentUser;
+
     return FutureBuilder<bool>(
-      future: _validationFuture,
+      // WARNING: Calling firebaseService.validateCurrentVolunteer() directly here
+      // means it will be executed every time this build method runs.
+      // If HomeScreen rebuilds frequently, this will result in multiple API calls.
+      // This is a consequence of the constraints (StatelessWidget, no initState, logic in build).
+      future: firebaseService.validateCurrentVolunteer(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -43,58 +30,57 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         if (snapshot.hasError) {
-          // Capture the error message from the snapshot
-          // The exception is re-thrown from FirebaseService
-          _errorMessage = snapshot.error.toString();
-          return _buildErrorUI(); // Show error UI with retry
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Displaying the error directly from the snapshot.
+                    // Assumes FirebaseService.validateCurrentVolunteer throws an error
+                    // that is suitable for display.
+                    Text(
+                      snapshot.error.toString(),
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        // In a StatelessWidget, this button cannot directly re-trigger
+                        // the FutureBuilder with a new future by calling setState.
+                        // If this HomeScreen widget is rebuilt by its parent,
+                        // the future will be re-fetched. This button is a UX hint.
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
         }
 
         if (snapshot.hasData) {
-          final isValidVolunteer = snapshot.data!;
+          final bool isValidVolunteer = snapshot.data!;
           if (isValidVolunteer) {
             return const ActualHomeScreen();
           } else {
-            // If not valid, but no specific error from function (e.g., user doc not found)
-            // or if user is null initially.
-            _errorMessage =
-                _currentUser == null
-                    ? "You are not logged in. Please log in and try again."
-                    : "You are not authorized as a volunteer.";
+            // If data is false, volunteer is not valid (or not logged in,
+            // as handled by validateCurrentVolunteer).
+            // Pass the current user's UID to AccessDeniedScreen.
             return AccessDeniedScreen(
-              uid: _currentUser?.uid,
-              customMessage: _errorMessage,
+              uid: currentUser?.uid,
             );
           }
         }
 
-        // Fallback / initial state before future completes or if no data/error yet
-        // This case should ideally be covered by ConnectionState.waiting
-        return _buildErrorUI(); // Or a generic loading/error screen
+        // Fallback for any other state, though typically covered by .waiting or .hasError/.hasData.
+        return const Scaffold(
+          body: Center(child: Text("Initializing...\nTry refreshing if it takes too long")), // Placeholder
+        );
       },
-    );
-  }
-
-  Widget _buildErrorUI() {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _errorMessage ?? 'Error validating volunteer status.',
-                style: const TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _validateVolunteer, // Retry validation
-                child: const Text('Retry Validation'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
