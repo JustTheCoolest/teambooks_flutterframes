@@ -30,8 +30,14 @@ CloudFunction getBookDetails(ISBN) {
 }
 
 @private
+@perhaps use the extension
+@would cron job be better?
+CloudFunction updateAggregates(buffer) {...}
+
+@private
 CloudFunction registerBookToCatalog(DonorID, List[ISBNs]) {
   List[Copies] init
+  buffer: aggregate updates {apartments counts, genres counts}
   for (ISBN in List[ISBNs]):
     book = firestore.get((collection:catalog)/(bookID:auto-gen))
     book.put((collection:copies)/(copyID:auto-gen)/{
@@ -41,11 +47,14 @@ CloudFunction registerBookToCatalog(DonorID, List[ISBNs]) {
       ISBN,
       getBookDetails(ISBN),
     })
+    update aggregates buffer
     Copies.addToList('booksRegistered', fullID)
+  update_aggregates(buffer)
   return Copies
 }
 
 @public
+@alternate: use buffer collection instead of callable functions, to enable offline support(?)
 CloudFunction addBookToCatalog(Donor Details, List[ISBNs]) {
   throwable: validate request is from volunteer 
   donorID = checkPhoneNumberExists(Donor Details.phone number) ?? addDonorDetails(Donor Details)
