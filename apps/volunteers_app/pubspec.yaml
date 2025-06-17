@@ -40,6 +40,8 @@ dependencies:
   url_launcher: ^6.3.1
   firebase_auth: ^5.6.0
   firebase_core: ^3.14.0
+  cloud_functions: ^5.0.0 # Added for Firebase Cloud Functions
+  provider: ^6.0.0 # Added for state management
 
 dev_dependencies:
   flutter_test:

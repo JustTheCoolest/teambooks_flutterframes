@@ -4,6 +4,7 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'home.dart'; // Assuming home.dart contains HomeScreen
+import 'home_screen.dart'; // Assuming home_screen.dart contains HomeScreen
 
 // Define db instance
 final db = FirebaseFirestore.instance; // Added

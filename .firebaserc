@@ -1,1 +1,7 @@
-{}
+{
+  "projects": {
+    "padur-library": "padur-library-58b3a"
+  },
+  "targets": {},
+  "etags": {}
+}

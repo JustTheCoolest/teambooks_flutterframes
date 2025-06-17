@@ -1,0 +1,16 @@
+book {
+    isbn: "ajksfdjlkf",
+    donorID: "ksfjsklj"
+}
+
+Donor 1{
+    apartment: "VIT"
+}
+
+Donor 2 {
+    apartment: "Vellore IT"
+}
+
+admin: merge({vit, vellore it} -> vit)
+count(vit) = count(vit) + count(vellore it)
+delete(count(vellore it))
