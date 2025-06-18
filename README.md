@@ -1,3 +1,5 @@
+Install Flutter: https://docs.flutter.dev/get-started/install (target platform: web)
+
 ### Terminal 0
 ```
 npm install -g firebase-tools
