@@ -10,7 +10,7 @@ import uuid
 
 initialize_app()
 
-options.set_global_options(region=options.SupportedRegion.US_CENTRAL1) 
+options.set_global_options(region=options.SupportedRegion.ASIA_SOUTH1) 
 
 @https_fn.on_request()
 def helloworld(req: https_fn.Request) -> https_fn.Response:
