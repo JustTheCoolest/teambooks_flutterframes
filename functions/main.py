@@ -29,10 +29,10 @@ def validate_volunteer(req: https_fn.CallableRequest):
         )
 
     db = firestore.client()
-    volunteer_ref = db.collection('volunteers').document(volunteer_uid)
-    volunteer_doc = volunteer_ref.get()
 
-    return volunteer_doc.exists
+    user_doc = db.collection('users').document(volunteer_uid).get()
+    print(user_doc.to_dict())  # Debugging line to see user document content
+    return user_doc.exists and user_doc.to_dict().get('roles', {}).get('volunteer', False)
 
 @https_fn.on_call()
 def check_phone_number_exists(req: https_fn.CallableRequest):
