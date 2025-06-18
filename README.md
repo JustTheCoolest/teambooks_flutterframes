@@ -7,6 +7,7 @@ npm install -g firebase-tools
 ```
 firebase emulators:start
 ```
+if "running scripts is disabled on this system": https://stackoverflow.com/a/4038991/14139068
 
 ### Terminal 2
 ```
