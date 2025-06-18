@@ -15,5 +15,5 @@ cd .\apps\volunteers_app\
 ```
 For testing Firebase Cloud Functions Emulator,
 ```
-flutter run -t .\test\cloud_functions_test.dart\
+flutter run -t .\test\cloud_functions_test.dart
 ```
