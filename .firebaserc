@@ -1,6 +1,7 @@
 {
   "projects": {
-    "padur-library": "padur-library-58b3a"
+    "padur-library": "padur-library-58b3a",
+    "default": "padur-library-58b3a"
   },
   "targets": {},
   "etags": {}

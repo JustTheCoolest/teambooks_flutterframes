@@ -10,7 +10,7 @@ import uuid
 
 initialize_app()
 
-options.set_global_options(region=options.SupportedRegion.EUROPE_WEST1)
+options.set_global_options(region=options.SupportedRegion.ASIA_SOUTH1) 
 
 @https_fn.on_call()
 def validate_volunteer(req: https_fn.CallableRequest):
@@ -28,7 +28,7 @@ def validate_volunteer(req: https_fn.CallableRequest):
     volunteer_ref = db.collection('volunteers').document(volunteer_uid)
     volunteer_doc = volunteer_ref.get()
 
-    return {"exists": volunteer_doc.exists}
+    return volunteer_doc.exists
 
 @https_fn.on_call()
 def check_phone_number_exists(req: https_fn.CallableRequest):

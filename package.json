@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1",
+    "mocha": "^11.6.0"
+  }
+}
