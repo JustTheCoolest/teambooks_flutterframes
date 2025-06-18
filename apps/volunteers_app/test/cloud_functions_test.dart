@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: FutureBuilder(
-        future: http.get(Uri.parse('http://127.0.0.1:5001/padur-library-58b3a/us-central1/helloworld')),
+        future: firebase_instance.httpsCallable('helloworld').call(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return CircularProgressIndicator();
