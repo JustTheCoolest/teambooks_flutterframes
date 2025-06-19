@@ -410,3 +410,11 @@ Issues? Report them at https://github.com/firebase/firebase-tools/issues and att
 [debug] [2025-06-18T02:18:21.643Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/padur-library-58b3a/us-central1/validate_volunteer-2025-06-18T02:18:21.643Z"],"workRunningCount":1}
 [debug] [2025-06-18T02:18:21.643Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
 ```
+
+-----
+
+Another Question:
+
+Fix that worked for me: `flutter clean`
+
+I used to use Edge and everything was working fine. Once, I used Chrome (developer version), and I kept getting this error whenever I tried to run in Edge after that. 

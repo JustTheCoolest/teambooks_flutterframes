@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
             // Handle the error case
             return Text('Error: ${snapshot.error}');
           } else {
-            print('Snapshot data: ${snapshot.data}');
+            print('Snapshot data: ${snapshot.data!.data}');
             return Text('Result: ${snapshot.data!.data as bool}');
           }
         },
