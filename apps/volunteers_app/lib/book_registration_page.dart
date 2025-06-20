@@ -1,7 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/book_registration_provider.dart';
-import 'receipt_dialog.dart';
+import 'dart:async';
+
+// Placeholder models based on pseudocode
+class DonorDetails {
+  String? phoneNumber;
+  String name;
+  String? email;
+  String? companyOrApartment;
+
+  DonorDetails({
+    this.phoneNumber,
+    required this.name,
+    this.email,
+    this.companyOrApartment,
+  });
+}
+
+class BookDetails {
+  String isbn;
+  String? title;
+  String? author;
+  // Genre was in pseudocode, but not used in UI logic, keeping it simple.
+  // String? genre;
+
+  BookDetails({required this.isbn, this.title, this.author});
+}
 
 class BookRegistrationPage extends StatelessWidget {
   const BookRegistrationPage({super.key});
@@ -9,332 +32,416 @@ class BookRegistrationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Registration')),
-      body: const BookRegistrationDialog(),
+      appBar: AppBar(title: const Text('Register Book Donation')),
+      // Using a separate widget for the form improves readability and state management.
+      body: const BookRegistrationForm(),
     );
   }
 }
 
-/*
-use flutter_forms_builder, validators, etc.
-
-DonorDetails {phone number, name, email, company or apartment}
-BookDetails {ISBN, title, author, genre}
-
-BookRegistrationForm stateful {
-  states (use setstate): 
-    isAnonymous, submittedPhoneNumber, isAlreadyRegistered, donorDetails, isDetailsSaved, ISBNs
-  Toggle(isAnonymous, default: false)
-  if not isAnonymous : input(phone number, onSubmit: checkPhoneNumber to set isAlreadyRegistered, nullable) with next/skip
-  if submittedPhoneNumber : if isAlreadyRegistered ? DonorDetails(disable edits, donorDetails) with next/edit : DonorDetails(enable edits, donorDetails) with next
-  if isDetailsSaved : book unit ( input(isbn?), verify/enter book details) with add book / submit form 
-}
-*/
-
-class BookRegistrationDialog extends StatefulWidget {
-  const BookRegistrationDialog({super.key});
+class BookRegistrationForm extends StatefulWidget {
+  const BookRegistrationForm({super.key});
 
   @override
-  State<BookRegistrationDialog> createState() => _BookRegistrationDialogState();
+  State<BookRegistrationForm> createState() => _BookRegistrationFormState();
 }
 
-class _BookRegistrationDialogState extends State<BookRegistrationDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _isbnController = TextEditingController();
+// Enum to manage the current step in the registration process.
+enum RegistrationStep { donorType, donorDetails, bookEntry }
+
+class _BookRegistrationFormState extends State<BookRegistrationForm> {
+  // State management for the stepper and form logic
+  RegistrationStep _currentStep = RegistrationStep.donorType;
+  bool _isAnonymous = false;
+  bool _isCheckingPhone = false;
+  bool _isSubmitting = false;
+  bool _isExistingDonor = false;
+  bool _donorDetailsLocked = false;
+
+  // Form controllers
   final _phoneController = TextEditingController();
   final _nameController = TextEditingController();
-  final _companyController = TextEditingController();
   final _emailController = TextEditingController();
+  final _companyController = TextEditingController();
+  final _isbnController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    // Initialize controllers with provider data if dialog is rebuilt (e.g. due to orientation change)
-    // but typically clearForm() is called before dialog is shown.
-    final provider = context.read<BookRegistrationProvider>();
-    _phoneController.text = provider.phoneNumber ?? '';
-    _nameController.text = provider.name;
-    _companyController.text = provider.companyOrApartment ?? '';
-    _emailController.text = provider.email ?? '';
-  }
+  // Data storage
+  final List<BookDetails> _books = [];
+  String? _errorMessage;
 
   @override
   void dispose() {
-    _isbnController.dispose();
     _phoneController.dispose();
     _nameController.dispose();
-    _companyController.dispose();
     _emailController.dispose();
+    _companyController.dispose();
+    _isbnController.dispose();
     super.dispose();
   }
 
-  void _submitForm(BookRegistrationProvider provider) async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save(); // Triggers onSaved for all fields
-      final success = await provider.submitRegistration();
-      if (success && mounted) {
-        // Show receipt
-        showDialog(
-          context: context,
-          builder:
-              (receiptContext) => ReceiptDialog(
-                receiptData: provider.receiptData!,
-                donorEmail: provider.email,
-              ),
-        ).then((_) {
-          // After receipt is closed, close the registration form as well
-          Navigator.of(context).pop(); // Close BookRegistrationDialog
-          provider.clearForm(); // Clear form for next time
-        });
-      }
+  // --- Placeholder Functions for Business Logic ---
+
+  /// Placeholder to check if a phone number belongs to an existing donor.
+  Future<void> _checkPhoneNumber() async {
+    if (_phoneController.text.trim().isEmpty) {
+      // If phone is empty, treat as a new, non-anonymous donor.
+      setState(() {
+        _isExistingDonor = false;
+        _donorDetailsLocked = false;
+        _nameController.clear();
+        _emailController.clear();
+        _companyController.clear();
+        _currentStep = RegistrationStep.donorDetails;
+      });
+      return;
     }
+
+    setState(() {
+      _isCheckingPhone = true;
+      _errorMessage = null;
+    });
+
+    // Simulate a network call to a backend service.
+    await Future.delayed(const Duration(seconds: 1));
+
+    // --- MOCK BACKEND RESPONSE ---
+    // In a real app, this would be an API call, e.g.:
+    // final response = await FirebaseService().checkPhoneNumberExists(_phoneController.text.trim());
+    final isExisting = _phoneController.text.trim() == '1234567890';
+    final mockDonorData = {
+      'name': 'Jane Doe (Existing)',
+      'email': 'jane.doe@example.com',
+      'companyOrApartment': 'Flutter Corp',
+    };
+    // --- END MOCK ---
+
+    if (!mounted) return;
+
+    setState(() {
+      _isExistingDonor = isExisting;
+      if (_isExistingDonor) {
+        _nameController.text = mockDonorData['name']!;
+        _emailController.text = mockDonorData['email']!;
+        _companyController.text = mockDonorData['companyOrApartment']!;
+        _donorDetailsLocked = true;
+      } else {
+        // Clear fields for new donor entry.
+        _nameController.clear();
+        _emailController.clear();
+        _companyController.clear();
+        _donorDetailsLocked = false;
+      }
+      _isCheckingPhone = false;
+      _currentStep = RegistrationStep.donorDetails;
+    });
   }
+
+  /// Placeholder to fetch book details from an ISBN.
+  Future<void> _addBook() async {
+    final isbn = _isbnController.text.trim();
+    if (isbn.isEmpty || _books.any((b) => b.isbn == isbn)) {
+      _isbnController.clear();
+      return;
+    }
+
+    // --- MOCK BACKEND RESPONSE ---
+    // In a real app, this would be an API call, e.g.:
+    // final details = await FirebaseService().getBookDetails(isbn);
+    final mockBookDetails = BookDetails(
+      isbn: isbn,
+      title: 'The Art of Flutter',
+      author: 'Dr. Widget',
+    );
+    // --- END MOCK ---
+
+    setState(() {
+      _books.add(mockBookDetails);
+      _isbnController.clear();
+    });
+  }
+
+  /// Placeholder to submit the final donation registration.
+  Future<void> _submitForm() async {
+    // Basic validation
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Donor name is required.');
+      return;
+    }
+    if (_books.isEmpty) {
+      setState(() => _errorMessage = 'At least one book must be added.');
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    final donorDetails = DonorDetails(
+      phoneNumber: _isAnonymous ? null : _phoneController.text.trim(),
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      companyOrApartment: _companyController.text.trim(),
+    );
+
+    // --- MOCK BACKEND SUBMISSION ---
+    // In a real app, this would be an API call, e.g.:
+    // final receipt = await FirebaseService().addBookDonation(donorDetails, _books);
+    print(
+      'Submitting donation for ${donorDetails.name} with ${_books.length} books.',
+    );
+    await Future.delayed(const Duration(seconds: 2));
+    // --- END MOCK ---
+
+    if (!mounted) return;
+
+    setState(() => _isSubmitting = false);
+
+    // On success, show a confirmation and pop the page.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Donation submitted successfully!')),
+    );
+    Navigator.of(context).pop();
+  }
+
+  // --- UI Builder Methods ---
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<BookRegistrationProvider>();
+    // Using a Stepper to guide the user through the registration process.
+    return Stepper(
+      type: StepperType.vertical,
+      currentStep: _currentStep.index,
+      onStepContinue: _onStepContinue,
+      onStepCancel: _onStepCancel,
+      steps: [
+        _buildDonorTypeStep(),
+        _buildDonorDetailsStep(),
+        _buildBookEntryStep(),
+      ],
+      controlsBuilder: (context, details) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 16.0),
+          child:
+              _isSubmitting
+                  ? const Center(child: CircularProgressIndicator())
+                  : Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: details.onStepContinue,
+                        child: Text(
+                          _currentStep == RegistrationStep.bookEntry
+                              ? 'Submit'
+                              : 'Next',
+                        ),
+                      ),
+                      if (_currentStep != RegistrationStep.donorType)
+                        TextButton(
+                          onPressed: details.onStepCancel,
+                          child: const Text('Back'),
+                        ),
+                    ],
+                  ),
+        );
+      },
+    );
+  }
 
-    // Update text controllers if provider data changes externally (e.g. after phone check)
-    // This is a bit manual; more complex forms might use listeners on controllers or dedicated state objects.
-    if (_nameController.text != provider.name) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _nameController.text = provider.name;
-      });
+  void _onStepContinue() {
+    switch (_currentStep) {
+      case RegistrationStep.donorType:
+        if (_isAnonymous) {
+          setState(() => _currentStep = RegistrationStep.donorDetails);
+        } else {
+          _checkPhoneNumber();
+        }
+        break;
+      case RegistrationStep.donorDetails:
+        if (_nameController.text.trim().isNotEmpty) {
+          setState(() {
+            _errorMessage = null;
+            _currentStep = RegistrationStep.bookEntry;
+          });
+        } else {
+          setState(() => _errorMessage = 'Donor name is required to proceed.');
+        }
+        break;
+      case RegistrationStep.bookEntry:
+        _submitForm();
+        break;
     }
-    if (_emailController.text != provider.email) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _emailController.text = provider.email ?? '';
-      });
-    }
-    if (_companyController.text != provider.companyOrApartment) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _companyController.text = provider.companyOrApartment ?? '';
-      });
-    }
+  }
 
-    return AlertDialog(
-      title: const Text('Register New Book Donation'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Text(
-                'Donor Details',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              TextFormField(
+  void _onStepCancel() {
+    if (_currentStep == RegistrationStep.donorDetails) {
+      setState(() => _currentStep = RegistrationStep.donorType);
+    } else if (_currentStep == RegistrationStep.bookEntry) {
+      setState(() => _currentStep = RegistrationStep.donorDetails);
+    }
+  }
+
+  Step _buildDonorTypeStep() {
+    return Step(
+      title: const Text('Step 1: Donor Information'),
+      subtitle: const Text('Anonymous or existing donor?'),
+      isActive: _currentStep == RegistrationStep.donorType,
+      state: _currentStep.index > 0 ? StepState.complete : StepState.indexed,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            title: const Text('Donate anonymously'),
+            value: _isAnonymous,
+            onChanged: (value) => setState(() => _isAnonymous = value),
+          ),
+          if (!_isAnonymous)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: TextFormField(
                 controller: _phoneController,
                 decoration: InputDecoration(
-                  labelText: 'Phone Number (Optional)',
-                  hintText: 'Check if donor exists',
+                  labelText: 'Phone Number',
+                  hintText: 'Enter phone to find existing donor',
                   suffixIcon:
-                      provider.isVerifyingPhoneNumber
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                      _isCheckingPhone
+                          ? const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: CircularProgressIndicator(),
                           )
-                          : IconButton(
-                            icon: const Icon(Icons.search),
-                            tooltip: 'Check Phone Number',
-                            onPressed:
-                                _phoneController.text.isNotEmpty
-                                    ? () {
-                                      provider.setPhoneNumber(
-                                        _phoneController.text,
-                                      );
-                                      provider.checkPhoneNumber();
-                                    }
-                                    : null,
-                          ),
+                          : null,
                 ),
                 keyboardType: TextInputType.phone,
-                onChanged: (value) => provider.setPhoneNumber(value),
-                // No validator, as it's optional for submission but required for check
+                onFieldSubmitted: (_) => _checkPhoneNumber(),
               ),
-              if (provider.donorExists)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    provider.existingDonorDetails?['name'] != null
-                        ? 'Existing donor: ${provider.existingDonorDetails!['name']}'
-                        : 'Existing donor found.',
-                    style: const TextStyle(color: Colors.green),
-                  ),
-                ),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Name*'),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Donor name is required'
-                            : null,
-                onChanged: (value) => provider.setName(value),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Step _buildDonorDetailsStep() {
+    return Step(
+      title: const Text('Step 2: Donor Details'),
+      isActive: _currentStep == RegistrationStep.donorDetails,
+      state: _currentStep.index > 1 ? StepState.complete : StepState.indexed,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_isExistingDonor)
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
               ),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email (for receipt)',
-                ),
-                keyboardType: TextInputType.emailAddress,
-                onChanged: (value) => provider.setEmail(value),
-                // Optional: add email validator
-              ),
-              TextFormField(
-                controller: _companyController,
-                decoration: const InputDecoration(
-                  labelText: 'Company / Apartment (Optional)',
-                ),
-                onChanged: (value) => provider.setCompanyOrApartment(value),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Books (ISBNs)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Row(
+              child: Row(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _isbnController,
-                      decoration: const InputDecoration(
-                        labelText: 'Enter ISBN',
-                      ),
-                      keyboardType:
-                          TextInputType
-                              .text, // Can be number, but ISBNs can have 'X'
-                      validator: (value) {
-                        // Basic ISBN validation (length), more complex validation can be added
-                        if (provider.books.isEmpty &&
-                            (value == null || value.isEmpty)) {
-                          return 'At least one ISBN is required';
-                        }
-                        return null;
-                      },
+                  const Icon(Icons.check_circle, color: Colors.green),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Existing donor found.')),
+                  if (_donorDetailsLocked)
+                    TextButton.icon(
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('Edit'),
+                      onPressed:
+                          () => setState(() => _donorDetailsLocked = false),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    tooltip: 'Add ISBN',
-                    onPressed: () {
-                      if (_isbnController.text.isNotEmpty) {
-                        provider.addBook(_isbnController.text);
-                        _isbnController.clear();
-                      }
-                    },
-                  ),
                 ],
               ),
-              const SizedBox(height: 10),
-              if (provider.books.isEmpty)
-                const Text(
-                  'Please add at least one ISBN.',
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey,
-                  ),
-                ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: provider.books.length,
-                itemBuilder: (context, index) {
-                  final book = provider.books[index];
-                  final details = provider.bookDetailsCache[book.isbn];
-                  return ListTile(
-                    leading:
-                        provider.isVerifyingIsbn && details == null
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : (details?['error'] != null
-                                ? const Icon(
-                                  Icons.error_outline,
-                                  color: Colors.orange,
-                                )
-                                : const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Colors.green,
-                                )),
-                    title: Text(details?['title'] ?? book.isbn),
-                    subtitle:
-                        details?['error'] != null
-                            ? Text(
-                              details!['error'].toString(),
-                              style: const TextStyle(color: Colors.red),
-                            )
-                            : Text(
-                              "ISBN: ${book.isbn}${details?['authors'] != null ? ' - ${details!['authors'].join(', ')}' : ''}",
-                            ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.remove_circle_outline,
-                        color: Colors.redAccent,
-                      ),
-                      onPressed: () => provider.removeBook(book.isbn),
-                    ),
-                    dense: true,
-                  );
-                },
-              ),
-              if (provider.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 15.0),
-                  child: Text(
-                    provider.errorMessage!,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              if (provider.successMessage != null &&
-                  provider.receiptData ==
-                      null) // Show general success if no receipt yet
-                Padding(
-                  padding: const EdgeInsets.only(top: 15.0),
-                  child: Text(
-                    provider.successMessage!,
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
+            ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(labelText: 'Name*'),
+            readOnly: _donorDetailsLocked,
+            validator: (v) => v!.isEmpty ? 'Name is required' : null,
           ),
-        ),
+          TextFormField(
+            controller: _emailController,
+            decoration: const InputDecoration(labelText: 'Email (for receipt)'),
+            keyboardType: TextInputType.emailAddress,
+            readOnly: _donorDetailsLocked,
+          ),
+          TextFormField(
+            controller: _companyController,
+            decoration: const InputDecoration(labelText: 'Company / Apartment'),
+            readOnly: _donorDetailsLocked,
+          ),
+          if (_errorMessage != null &&
+              _currentStep == RegistrationStep.donorDetails)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+        ],
       ),
-      actions: <Widget>[
-        TextButton(
-          child: const Text('Cancel'),
-          onPressed: () {
-            Navigator.of(context).pop();
-            provider.clearForm();
-          },
-        ),
-        ElevatedButton.icon(
-          icon:
-              provider.isLoading
-                  ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.0,
-                      color: Colors.white,
+    );
+  }
+
+  Step _buildBookEntryStep() {
+    return Step(
+      title: const Text('Step 3: Add Books'),
+      isActive: _currentStep == RegistrationStep.bookEntry,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _isbnController,
+            decoration: InputDecoration(
+              labelText: 'Enter ISBN',
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: 'Add Book',
+                onPressed: _addBook,
+              ),
+            ),
+            onFieldSubmitted: (_) => _addBook(),
+          ),
+          const SizedBox(height: 10),
+          if (_books.isEmpty)
+            const Center(
+              child: Text(
+                'No books added yet.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _books.length,
+            itemBuilder: (context, index) {
+              final book = _books[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                child: ListTile(
+                  leading: const Icon(Icons.book_outlined),
+                  title: Text(book.title ?? 'Title Not Found'),
+                  subtitle: Text('ISBN: ${book.isbn}'),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.remove_circle_outline,
+                      color: Colors.redAccent,
                     ),
-                  )
-                  : const Icon(Icons.send),
-          label: const Text('Submit Donation'),
-          onPressed: provider.isLoading ? null : () => _submitForm(provider),
-        ),
-      ],
+                    onPressed: () => setState(() => _books.removeAt(index)),
+                  ),
+                ),
+              );
+            },
+          ),
+          if (_errorMessage != null &&
+              _currentStep == RegistrationStep.bookEntry)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
