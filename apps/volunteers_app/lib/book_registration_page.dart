@@ -1,29 +1,26 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 
-// Placeholder models based on pseudocode
+// Data models, previously in firebase_service.dart
+class BookEntry {
+  final String isbn;
+  BookEntry({required this.isbn});
+}
+
 class DonorDetails {
-  String? phoneNumber;
-  String name;
-  String? email;
-  String? companyOrApartment;
+  final String? phoneNumber;
+  final String name;
+  final String? companyOrApartment;
+  final String? email;
 
   DonorDetails({
     this.phoneNumber,
     required this.name,
-    this.email,
     this.companyOrApartment,
+    this.email,
   });
-}
-
-class BookDetails {
-  String isbn;
-  String? title;
-  String? author;
-  // Genre was in pseudocode, but not used in UI logic, keeping it simple.
-  // String? genre;
-
-  BookDetails({required this.isbn, this.title, this.author});
 }
 
 class BookRegistrationPage extends StatelessWidget {
@@ -33,7 +30,6 @@ class BookRegistrationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Register Book Donation')),
-      // Using a separate widget for the form improves readability and state management.
       body: const BookRegistrationForm(),
     );
   }
@@ -46,11 +42,11 @@ class BookRegistrationForm extends StatefulWidget {
   State<BookRegistrationForm> createState() => _BookRegistrationFormState();
 }
 
-// Enum to manage the current step in the registration process.
 enum RegistrationStep { donorType, donorDetails, bookEntry }
 
 class _BookRegistrationFormState extends State<BookRegistrationForm> {
-  // State management for the stepper and form logic
+  final _formKey = GlobalKey<FormBuilderState>();
+
   RegistrationStep _currentStep = RegistrationStep.donorType;
   bool _isAnonymous = false;
   bool _isCheckingPhone = false;
@@ -58,39 +54,60 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   bool _isExistingDonor = false;
   bool _donorDetailsLocked = false;
 
-  // Form controllers
-  final _phoneController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _companyController = TextEditingController();
   final _isbnController = TextEditingController();
-
-  // Data storage
-  final List<BookDetails> _books = [];
+  final List<BookEntry> _books = [];
   String? _errorMessage;
+
+  // --- Placeholder Functions for backend interaction ---
+
+  /// Simulates checking if a phone number exists in the backend.
+  Future<Map<String, dynamic>?> _checkPhoneNumberExists(
+    String phoneNumber,
+  ) async {
+    await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
+    if (phoneNumber == '1234567890') {
+      return {
+        'name': 'Balu',
+        'email': 'balu@test.com',
+        'companyOrApartment': 'Test Apt',
+      };
+    }
+    return null;
+  }
+
+  /// Simulates submitting the registration to the backend.
+  Future<void> _addBookDonation(
+    DonorDetails donorDetails,
+    List<String> isbns,
+  ) async {
+    await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
+    debugPrint(
+      'Registering donor: ${donorDetails.name} with ${isbns.length} books.',
+    );
+    // Simulate success, no return value needed for Future<void>
+  }
 
   @override
   void dispose() {
-    _phoneController.dispose();
-    _nameController.dispose();
-    _emailController.dispose();
-    _companyController.dispose();
     _isbnController.dispose();
     super.dispose();
   }
 
-  // --- Placeholder Functions for Business Logic ---
-
-  /// Placeholder to check if a phone number belongs to an existing donor.
   Future<void> _checkPhoneNumber() async {
-    if (_phoneController.text.trim().isEmpty) {
-      // If phone is empty, treat as a new, non-anonymous donor.
+    final phoneField = _formKey.currentState!.fields['phone']!;
+    if (!phoneField.validate()) return;
+    phoneField.save();
+    final phoneNumber = phoneField.value as String?;
+
+    if (phoneNumber == null || phoneNumber.trim().isEmpty) {
       setState(() {
         _isExistingDonor = false;
         _donorDetailsLocked = false;
-        _nameController.clear();
-        _emailController.clear();
-        _companyController.clear();
+        _formKey.currentState?.patchValue({
+          'name': '',
+          'email': '',
+          'companyOrApartment': '',
+        });
         _currentStep = RegistrationStep.donorDetails;
       });
       return;
@@ -101,70 +118,55 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       _errorMessage = null;
     });
 
-    // Simulate a network call to a backend service.
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await _checkPhoneNumberExists(phoneNumber.trim());
+      if (!mounted) return;
 
-    // --- MOCK BACKEND RESPONSE ---
-    // In a real app, this would be an API call, e.g.:
-    // final response = await FirebaseService().checkPhoneNumberExists(_phoneController.text.trim());
-    final isExisting = _phoneController.text.trim() == '1234567890';
-    final mockDonorData = {
-      'name': 'Jane Doe (Existing)',
-      'email': 'jane.doe@example.com',
-      'companyOrApartment': 'Flutter Corp',
-    };
-    // --- END MOCK ---
-
-    if (!mounted) return;
-
-    setState(() {
-      _isExistingDonor = isExisting;
-      if (_isExistingDonor) {
-        _nameController.text = mockDonorData['name']!;
-        _emailController.text = mockDonorData['email']!;
-        _companyController.text = mockDonorData['companyOrApartment']!;
-        _donorDetailsLocked = true;
-      } else {
-        // Clear fields for new donor entry.
-        _nameController.clear();
-        _emailController.clear();
-        _companyController.clear();
-        _donorDetailsLocked = false;
+      setState(() {
+        _isExistingDonor = response != null;
+        if (_isExistingDonor) {
+          _formKey.currentState?.patchValue({
+            'name': response!['name'],
+            'email': response['email'],
+            'companyOrApartment': response['companyOrApartment'],
+          });
+          _donorDetailsLocked = true;
+        } else {
+          _formKey.currentState?.patchValue({
+            'name': '',
+            'email': '',
+            'companyOrApartment': '',
+          });
+          _donorDetailsLocked = false;
+        }
+        _currentStep = RegistrationStep.donorDetails;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = "Error checking phone: ${e.toString()}");
       }
-      _isCheckingPhone = false;
-      _currentStep = RegistrationStep.donorDetails;
-    });
+    } finally {
+      if (mounted) setState(() => _isCheckingPhone = false);
+    }
   }
 
-  /// Placeholder to fetch book details from an ISBN.
   Future<void> _addBook() async {
     final isbn = _isbnController.text.trim();
     if (isbn.isEmpty || _books.any((b) => b.isbn == isbn)) {
       _isbnController.clear();
       return;
     }
-
-    // --- MOCK BACKEND RESPONSE ---
-    // In a real app, this would be an API call, e.g.:
-    // final details = await FirebaseService().getBookDetails(isbn);
-    final mockBookDetails = BookDetails(
-      isbn: isbn,
-      title: 'The Art of Flutter',
-      author: 'Dr. Widget',
-    );
-    // --- END MOCK ---
-
     setState(() {
-      _books.add(mockBookDetails);
+      _books.add(BookEntry(isbn: isbn));
       _isbnController.clear();
     });
   }
 
-  /// Placeholder to submit the final donation registration.
   Future<void> _submitForm() async {
-    // Basic validation
-    if (_nameController.text.trim().isEmpty) {
-      setState(() => _errorMessage = 'Donor name is required.');
+    if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
+      setState(
+        () => _errorMessage = 'Please correct the errors before submitting.',
+      );
       return;
     }
     if (_books.isEmpty) {
@@ -177,77 +179,77 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       _errorMessage = null;
     });
 
+    final formValue = _formKey.currentState!.value;
     final donorDetails = DonorDetails(
-      phoneNumber: _isAnonymous ? null : _phoneController.text.trim(),
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      companyOrApartment: _companyController.text.trim(),
+      phoneNumber: _isAnonymous ? null : formValue['phone'] as String?,
+      name: formValue['name'] as String,
+      email: formValue['email'] as String?,
+      companyOrApartment: formValue['companyOrApartment'] as String?,
     );
+    final isbns = _books.map((b) => b.isbn).toList();
 
-    // --- MOCK BACKEND SUBMISSION ---
-    // In a real app, this would be an API call, e.g.:
-    // final receipt = await FirebaseService().addBookDonation(donorDetails, _books);
-    print(
-      'Submitting donation for ${donorDetails.name} with ${_books.length} books.',
-    );
-    await Future.delayed(const Duration(seconds: 2));
-    // --- END MOCK ---
-
-    if (!mounted) return;
-
-    setState(() => _isSubmitting = false);
-
-    // On success, show a confirmation and pop the page.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Donation submitted successfully!')),
-    );
-    Navigator.of(context).pop();
+    try {
+      await _addBookDonation(donorDetails, isbns);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Donation submitted successfully!')),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = "Submission failed: ${e.toString()}");
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
-
-  // --- UI Builder Methods ---
 
   @override
   Widget build(BuildContext context) {
-    // Using a Stepper to guide the user through the registration process.
-    return Stepper(
-      type: StepperType.vertical,
-      currentStep: _currentStep.index,
-      onStepContinue: _onStepContinue,
-      onStepCancel: _onStepCancel,
-      steps: [
-        _buildDonorTypeStep(),
-        _buildDonorDetailsStep(),
-        _buildBookEntryStep(),
-      ],
-      controlsBuilder: (context, details) {
-        return Padding(
-          padding: const EdgeInsets.only(top: 16.0),
-          child:
-              _isSubmitting
-                  ? const Center(child: CircularProgressIndicator())
-                  : Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: details.onStepContinue,
-                        child: Text(
-                          _currentStep == RegistrationStep.bookEntry
-                              ? 'Submit'
-                              : 'Next',
+    return FormBuilder(
+      key: _formKey,
+      child: Stepper(
+        type: StepperType.vertical,
+        currentStep: _currentStep.index,
+        onStepContinue: _onStepContinue,
+        onStepCancel: _onStepCancel,
+        steps: [
+          _buildDonorTypeStep(),
+          _buildDonorDetailsStep(),
+          _buildBookEntryStep(),
+        ],
+        controlsBuilder: (context, details) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child:
+                _isSubmitting
+                    ? const Center(child: CircularProgressIndicator())
+                    : Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed:
+                              _isCheckingPhone ? null : details.onStepContinue,
+                          child: Text(
+                            _currentStep == RegistrationStep.bookEntry
+                                ? 'Submit'
+                                : 'Next',
+                          ),
                         ),
-                      ),
-                      if (_currentStep != RegistrationStep.donorType)
-                        TextButton(
-                          onPressed: details.onStepCancel,
-                          child: const Text('Back'),
-                        ),
-                    ],
-                  ),
-        );
-      },
+                        if (_currentStep != RegistrationStep.donorType)
+                          TextButton(
+                            onPressed: details.onStepCancel,
+                            child: const Text('Back'),
+                          ),
+                      ],
+                    ),
+          );
+        },
+      ),
     );
   }
 
   void _onStepContinue() {
+    final formState = _formKey.currentState!;
     switch (_currentStep) {
       case RegistrationStep.donorType:
         if (_isAnonymous) {
@@ -257,7 +259,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
         }
         break;
       case RegistrationStep.donorDetails:
-        if (_nameController.text.trim().isNotEmpty) {
+        if (formState.fields['name']!.validate()) {
           setState(() {
             _errorMessage = null;
             _currentStep = RegistrationStep.bookEntry;
@@ -297,8 +299,8 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
           if (!_isAnonymous)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: TextFormField(
-                controller: _phoneController,
+              child: FormBuilderTextField(
+                name: 'phone',
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
                   hintText: 'Enter phone to find existing donor',
@@ -311,7 +313,25 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                           : null,
                 ),
                 keyboardType: TextInputType.phone,
-                onFieldSubmitted: (_) => _checkPhoneNumber(),
+                validator: FormBuilderValidators.compose([
+                  FormBuilderValidators.numeric(
+                    errorText: 'Must be a valid number',
+                  ),
+                  FormBuilderValidators.minLength(
+                    10,
+                    errorText: 'Phone number should be at least 10 digits',
+                  ),
+                ]),
+                onSubmitted: (_) => _onStepContinue(),
+              ),
+            ),
+          if (_errorMessage != null &&
+              _currentStep == RegistrationStep.donorType)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
               ),
             ),
         ],
@@ -350,20 +370,27 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
               ),
             ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: _nameController,
+          FormBuilderTextField(
+            name: 'name',
             decoration: const InputDecoration(labelText: 'Name*'),
             readOnly: _donorDetailsLocked,
-            validator: (v) => v!.isEmpty ? 'Name is required' : null,
+            validator: FormBuilderValidators.required(
+              errorText: 'Name is required',
+            ),
           ),
-          TextFormField(
-            controller: _emailController,
+          FormBuilderTextField(
+            name: 'email',
             decoration: const InputDecoration(labelText: 'Email (for receipt)'),
             keyboardType: TextInputType.emailAddress,
             readOnly: _donorDetailsLocked,
+            validator: FormBuilderValidators.compose([
+              FormBuilderValidators.email(
+                errorText: 'Please enter a valid email address',
+              ),
+            ]),
           ),
-          TextFormField(
-            controller: _companyController,
+          FormBuilderTextField(
+            name: 'companyOrApartment',
             decoration: const InputDecoration(labelText: 'Company / Apartment'),
             readOnly: _donorDetailsLocked,
           ),
@@ -418,8 +445,10 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                 margin: const EdgeInsets.symmetric(vertical: 4),
                 child: ListTile(
                   leading: const Icon(Icons.book_outlined),
-                  title: Text(book.title ?? 'Title Not Found'),
-                  subtitle: Text('ISBN: ${book.isbn}'),
+                  title: Text(book.isbn),
+                  subtitle: const Text(
+                    'Details will be fetched upon submission',
+                  ),
                   trailing: IconButton(
                     icon: const Icon(
                       Icons.remove_circle_outline,

@@ -33,9 +33,6 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Displaying the error directly from the snapshot.
-                    // Assumes FirebaseService.validateCurrentVolunteer throws an error
-                    // that is suitable for display.
                     Text(
                       snapshot.error.toString(),
                       style: const TextStyle(color: Colors.red),
