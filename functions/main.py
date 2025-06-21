@@ -34,6 +34,29 @@ def validate_volunteer(req: https_fn.CallableRequest):
     print(user_doc.to_dict())  # Debugging line to see user document content
     return user_doc.exists and user_doc.to_dict().get('roles', {}).get('volunteer', False)
 
+
+'''
+CloudFunction addBookToCatalog(...):
+  Possibilities:
+    1. Direct callable function
+      - Requires internet connection
+      - No scope for failure. Can use auto-gen for document IDs
+    2. Directly add to catalog (with trigger)
+      - Automatic Firestore offline support
+      - Can there be doc ID conflicts when syncing with server?
+      - Phone number can be used as donor ID, but sounds like it might cause privacy problems, and we won't be able to update it or create accounts for children 
+      - Anonymous donors would still need auto-gen
+      - Can make volunteer UID as part of anonymous donor ID, but even volunteer can have multiple devices
+      - Can we assign IDs to volunteer devices?
+      - Privacy problem with including volunteer UID in donor ID
+      - Perhaps use clock time as part of ID / hash?
+      - What if trigger fails even after syncing document?
+    3. Buffer collection (with trigger)
+      - All problems as before
+      - Different auto-gen for doc IDs, might not be in sync
+      - More robust against trigger failures
+'''
+
 @https_fn.on_call()
 def check_phone_number_exists(req: https_fn.CallableRequest):
     """
