@@ -2,7 +2,7 @@
 # To get started, simply uncomment the below code or create your own.
 # Deploy with `firebase deploy`
 
-from firebase_functions import https_fn, options
+from firebase_functions import https_fn, options, firestore_fn
 from firebase_admin import initialize_app, firestore
 import requests
 import uuid
@@ -12,15 +12,18 @@ initialize_app()
 
 options.set_global_options(region=options.SupportedRegion.ASIA_SOUTH1) 
 
+db = firestore.client()
+
 @https_fn.on_request()
 def helloworld(req: https_fn.Request) -> https_fn.Response:
     return https_fn.Response("Hello, World!")
 
+def actual_validate_volunteer(volunteer_uid):
+    user_doc = db.collection('users').document(volunteer_uid).get()
+    return user_doc.exists and user_doc.to_dict().get('roles', {}).get('volunteer', False)
+
 @https_fn.on_call()
 def validate_volunteer(req: https_fn.CallableRequest):
-    """
-    Validates if the current user is a registered volunteer.
-    """
     volunteer_uid = req.auth.uid if req.auth else None
     if not volunteer_uid:
         raise https_fn.HttpsError(
@@ -28,14 +31,26 @@ def validate_volunteer(req: https_fn.CallableRequest):
             message="Authentication required."
         )
 
-    db = firestore.client()
-
-    user_doc = db.collection('users').document(volunteer_uid).get()
-    print(user_doc.to_dict())  # Debugging line to see user document content
-    return user_doc.exists and user_doc.to_dict().get('roles', {}).get('volunteer', False)
+    return actual_validate_volunteer(volunteer_uid)
 
 
 '''
+catalogQueue{
+    donationId (auto-gen, doc id),
+    donorId?,
+    volunteerUid,
+    "books" (isbns / manual book details): [isbn1, isbn2, ...],
+    wasOffline,
+    editDonorIntent,
+    donorDetails: {
+        name,
+        phoneNumber,
+        email,
+        apartment/company, 
+    },
+    donation timestamp,
+}
+
 CloudFunction addBookToCatalog(...):
   Possibilities:
     1. Direct callable function
@@ -55,7 +70,52 @@ CloudFunction addBookToCatalog(...):
       - All problems as before
       - Different auto-gen for doc IDs, might not be in sync
       - More robust against trigger failures
+      - Can't locally create receipts as the book doc is not created yet, unless we use custom ids or sync ids
 '''
+
+@firestore_fn.on_document_created(document_path='catalogQueue/{docId}')
+def addBooksToCatalog(event: firestore_fn.Event):
+    def validate_add_books_request(event):
+        error = ValueError("Improper request (rejected)")
+        isbns = event.data.get('isbns')
+        assert all(is_isbn(isbn) or is_book_details(isbn) for isbn in isbns), error
+
+    validate_add_books_request(event)
+    
+    def handle_donor(...):
+        if not donorId: 
+            if not donorDetails:
+                return anonymous
+            return create_donor(donor_details) with log
+        if editDonorIntent:
+            edit_donor(donorId, donor_details) with log
+            return donorId
+        return donorId
+
+    donorId = handle_donor(...)
+
+    init batch_writes 
+    for book in books:
+        if type(book) is isbn:
+            book_details = fetch_isbn(isbn) {
+                name, 
+                author,
+                genre,
+                picture
+            }
+        else:
+            book_details = book
+        batch_writes.add(
+            donationId,
+            {book_details},
+            volunteerUid,
+            donorId,
+            registrationDate=firestore.SERVER_TIMESTAMP,
+            donationTimestamp
+        )
+
+    batch_writes.write() with each log
+
 
 @https_fn.on_call()
 def check_phone_number_exists(req: https_fn.CallableRequest):

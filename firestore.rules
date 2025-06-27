@@ -20,6 +20,7 @@ service cloud.firestore {
       - volunteer privilege check
       - if donorId: then donorDetails only if editDonorIntent
       - if editDonorIntent is false: then donorDetails only if wasOffline
+      - len(isbns) > 0
     }
 
     match /TestCollection/{doc_id} {
