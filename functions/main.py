@@ -73,14 +73,30 @@ CloudFunction addBookToCatalog(...):
       - Can't locally create receipts as the book doc is not created yet, unless we use custom ids or sync ids
 '''
 
+'''
+create_donor(...):
+    - Donors have separate collection so that voluntters can read and write without privacy violations (?)
+    - Future changes in phone number or email?
+    - Document ID as the donor ID?
+    - Should an actually user account also be created simulataneously?
+    - In that case, what would be the relationship between the donor ID and user account ID?
+    - Reads and writes can be done via CloudFunctions to protect privacy, even if using only the users collection
+     (for avoiding ID complexity)
+    - But separate donors collection may still be better for architectural changes in the future?
+    - Enforce unique phone number
+    - Enforce unique email?
+    - Phone number is used as the main identifier in in-person drives (because simpler to listen and type), 
+      but email would be the main identifier for sign ins into the platform?
+    - Null values?
+    - Sign ins forced to be using phone number instead of email IDs?
+'''
+
 @firestore_fn.on_document_created(document_path='catalogQueue/{docId}')
 def addBooksToCatalog(event: firestore_fn.Event):
     def validate_add_books_request(event):
         error = ValueError("Improper request (rejected)")
         isbns = event.data.get('isbns')
         assert all(is_isbn(isbn) or is_book_details(isbn) for isbn in isbns), error
-
-    validate_add_books_request(event)
     
     def handle_donor(...):
         if not donorId: 
@@ -91,6 +107,8 @@ def addBooksToCatalog(event: firestore_fn.Event):
             edit_donor(donorId, donor_details) with log
             return donorId
         return donorId
+
+    validate_add_books_request(event)
 
     donorId = handle_donor(...)
 
@@ -115,6 +133,7 @@ def addBooksToCatalog(event: firestore_fn.Event):
         )
 
     batch_writes.write() with each log
+    update counters
 
 
 @https_fn.on_call()
