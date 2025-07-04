@@ -91,6 +91,20 @@ create_donor(...):
     - Sign ins forced to be using phone number instead of email IDs?
 '''
 
+def create_donor(donor_details):
+    donor_id = db.collection('donors').add({
+        'name': donor_name,
+        'email': donor_email,
+        'phoneNumber': donor_phone,
+        'apartment/company': donor_group,
+        'books': []
+    })
+    cloud log: volunteer_uid created donor_id synced at current_time and done at donation_time
+    return donor_id
+
+def fetch_isbn(isbn):
+    "https://openlibrary.org/dev/docs/api/books"
+
 @firestore_fn.on_document_created(document_path='catalogQueue/{docId}')
 def addBooksToCatalog(event: firestore_fn.Event):
     def validate_add_books_request(event):
