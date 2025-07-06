@@ -92,6 +92,7 @@ create_donor(...):
 '''
 
 def create_donor(donor_details):
+    assert phone_number and donor_email are unique
     donor_id = db.collection('donors').add({
         'name': donor_name,
         'email': donor_email,
@@ -102,7 +103,9 @@ def create_donor(donor_details):
     cloud log: volunteer_uid created donor_id synced at current_time and done at donation_time
     return donor_id
 
+@https_fn.on_call()
 def fetch_isbn(isbn):
+    is_isbn(...)
     "https://openlibrary.org/dev/docs/api/books"
 
 @firestore_fn.on_document_created(document_path='catalogQueue/{docId}')
@@ -149,35 +152,38 @@ def addBooksToCatalog(event: firestore_fn.Event):
     batch_writes.write() with each log
     update counters
 
-
 @https_fn.on_call()
 def check_phone_number_exists(req: https_fn.CallableRequest):
     """
     Checks if a donor with the given phone number already exists.
     """
+
+    def is_phone_number(value):
+        return isinstance(value, str) and len(value) == 10 and value.isdigit()
+
     phone_number = req.data.get('phoneNumber')
-    if not phone_number:
+    if not is_phone_number(phone_number):
         raise https_fn.HttpsError(
             code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
-            message="Phone number is required."
+            message="Invalid data."
         )
 
-    db = firestore.client()
     donors_ref = db.collection('donors')
     query = donors_ref.where('phoneNumber', '==', phone_number).limit(1)
     results = query.stream()
 
     donor_exists = any(results)
-    donor_id = None
-    if donor_exists:
-        # Assuming phone number is unique and can be used as or to find the ID
-        # This might need adjustment based on actual data structure
-        for doc in results: # Should be only one if phone number is unique
-            donor_id = doc.id
-            break # exit after first hit
 
-    return {"exists": donor_exists, "donorId": donor_id}
+    if not donor_exists:
+        return {"exists": False}
 
+    donor_doc = results[0]
+    donor_id = donor_doc.id
+    donor_email = donor_doc.get('email')
+    donor_phone = donor_doc.get('phoneNumber')
+    donor_group = donor_doc.get('apartment/company')
+
+    return {"exists": True, "donorId": donor_id, "email": donor_email, "phoneNumber": donor_phone, "group": donor_group}
 
 def add_donor_details(donor_details):
     """
