@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:form_builder_phone_field/form_builder_phone_field.dart';
 
 // Data models, previously in firebase_service.dart
 class BookEntry {
@@ -97,8 +98,13 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     final phoneField = _formKey.currentState!.fields['phone']!;
     if (!phoneField.validate()) return;
     phoneField.save();
-    final phoneNumber = phoneField.value as String?;
+    final phoneNumber =
+        (phoneField as FormBuilderPhoneFieldState).fullNumber;
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(phoneNumber)),
+    );
+    
     if (phoneNumber == null || phoneNumber.trim().isEmpty) {
       setState(() {
         _isExistingDonor = false;
@@ -253,7 +259,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     switch (_currentStep) {
       case RegistrationStep.donorType:
         if (_isAnonymous) {
-          setState(() => _currentStep = RegistrationStep.donorDetails);
+          setState(() => _currentStep = RegistrationStep.bookEntry);
         } else {
           _checkPhoneNumber();
         }
@@ -278,7 +284,11 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     if (_currentStep == RegistrationStep.donorDetails) {
       setState(() => _currentStep = RegistrationStep.donorType);
     } else if (_currentStep == RegistrationStep.bookEntry) {
-      setState(() => _currentStep = RegistrationStep.donorDetails);
+      if (_isAnonymous) {
+        setState(() => _currentStep = RegistrationStep.donorType);
+      } else {
+        setState(() => _currentStep = RegistrationStep.donorDetails);
+      }
     }
   }
 
@@ -299,10 +309,10 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
           if (!_isAnonymous)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: FormBuilderTextField(
+              child: FormBuilderPhoneField(
                 name: 'phone',
                 decoration: InputDecoration(
-                  labelText: 'Phone Number',
+                  labelText: 'Phone Number (Optional)',
                   hintText: 'Enter phone to find existing donor',
                   suffixIcon:
                       _isCheckingPhone
@@ -312,17 +322,16 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                           )
                           : null,
                 ),
-                keyboardType: TextInputType.phone,
+                defaultSelectedCountryIsoCode: 'IN',
                 validator: FormBuilderValidators.compose([
-                  FormBuilderValidators.numeric(
-                    errorText: 'Must be a valid number',
-                  ),
-                  FormBuilderValidators.minLength(
-                    10,
-                    errorText: 'Phone number should be at least 10 digits',
-                  ),
+                  FormBuilderValidators.integer(),
                 ]),
-                onSubmitted: (_) => _onStepContinue(),
+                // onFieldSubmitted: (_) => _onStepContinue(),
+                onFieldSubmitted: (stringy) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Value submitted: $stringy')),
+                  );
+                },
               ),
             ),
           if (_errorMessage != null &&
