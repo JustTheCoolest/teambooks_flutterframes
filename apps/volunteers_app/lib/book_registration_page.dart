@@ -66,14 +66,17 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     String phoneNumber,
   ) async {
     await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
-    if (phoneNumber == '1234567890') {
+    if (phoneNumber == '+911234567890') {
       return {
+        'exists': true,
+        'donorId': 'donor123',
         'name': 'Balu',
         'email': 'balu@test.com',
-        'companyOrApartment': 'Test Apt',
+        'group': 'Test Apt',
+        'phoneNumber': '+911234567890',
       };
     }
-    return null;
+    return {'exists': false};
   }
 
   /// Simulates submitting the registration to the backend.
@@ -99,21 +102,21 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     if (!phoneField.validate()) return;
     phoneField.save();
     final phoneNumber =
-        (phoneField as FormBuilderPhoneFieldState).fullNumber;
+        (phoneField as FormBuilderPhoneFieldState).fullNumber.trim();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(phoneNumber)),
-    );
-    
-    if (phoneNumber == null || phoneNumber.trim().isEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(phoneNumber)));
+
+    if (phoneNumber.isEmpty) {
       setState(() {
         _isExistingDonor = false;
         _donorDetailsLocked = false;
-        _formKey.currentState?.patchValue({
-          'name': '',
-          'email': '',
-          'companyOrApartment': '',
-        });
+        // _formKey.currentState?.patchValue({
+        //   'name': '',
+        //   'email': '',
+        //   'companyOrApartment': '',
+        // });
         _currentStep = RegistrationStep.donorDetails;
       });
       return;
@@ -125,24 +128,24 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     });
 
     try {
-      final response = await _checkPhoneNumberExists(phoneNumber.trim());
+      final response = await _checkPhoneNumberExists(phoneNumber);
       if (!mounted) return;
 
       setState(() {
-        _isExistingDonor = response != null;
+        _isExistingDonor = response!['exists'] as bool;
         if (_isExistingDonor) {
           _formKey.currentState?.patchValue({
-            'name': response!['name'],
+            'name': response['name'],
             'email': response['email'],
-            'companyOrApartment': response['companyOrApartment'],
+            'companyOrApartment': response['group'],
           });
           _donorDetailsLocked = true;
         } else {
-          _formKey.currentState?.patchValue({
-            'name': '',
-            'email': '',
-            'companyOrApartment': '',
-          });
+          // _formKey.currentState?.patchValue({
+          //   'name': '',
+          //   'email': '',
+          //   'companyOrApartment': '',
+          // });
           _donorDetailsLocked = false;
         }
         _currentStep = RegistrationStep.donorDetails;
@@ -326,12 +329,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                 validator: FormBuilderValidators.compose([
                   FormBuilderValidators.integer(),
                 ]),
-                // onFieldSubmitted: (_) => _onStepContinue(),
-                onFieldSubmitted: (stringy) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Value submitted: $stringy')),
-                  );
-                },
               ),
             ),
           if (_errorMessage != null &&

@@ -38,16 +38,11 @@ class HomeScreen extends StatelessWidget {
                       style: const TextStyle(color: Colors.red),
                       textAlign: TextAlign.center,
                     ),
-                    // const SizedBox(height: 20),
-                    // ElevatedButton(
-                    //   onPressed: () {
-                    //     // In a StatelessWidget, this button cannot directly re-trigger
-                    //     // the FutureBuilder with a new future by calling setState.
-                    //     // If this HomeScreen widget is rebuilt by its parent,
-                    //     // the future will be re-fetched. This button is a UX hint.
-                    //   },
-                    //   child: const Text('Retry'),
-                    // ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "Please try again later or contact support if the issue persists.",
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),

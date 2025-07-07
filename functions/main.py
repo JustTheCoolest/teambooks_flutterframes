@@ -160,6 +160,8 @@ def check_phone_number_exists(req: https_fn.CallableRequest):
     Checks if a donor with the given phone number already exists.
     """
 
+    # log the read (not implemented here, assuming all reads are logged)
+
     validate_volunteer(req)
 
     def is_phone_number(value):
@@ -185,7 +187,7 @@ def check_phone_number_exists(req: https_fn.CallableRequest):
     donor_id = donor_doc.id
     donor_email = donor_doc.get('email')
     donor_phone = donor_doc.get('phoneNumber')
-    donor_group = donor_doc.get('apartment/company')
+    donor_group = donor_doc.get('group')
 
     return {"exists": True, "donorId": donor_id, "email": donor_email, "phoneNumber": donor_phone, "group": donor_group}
 
