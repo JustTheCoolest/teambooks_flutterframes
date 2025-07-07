@@ -91,6 +91,7 @@ create_donor(...):
     - Sign ins forced to be using phone number instead of email IDs?
 '''
 
+"""
 def create_donor(donor_details):
     assert phone_number and donor_email are unique
     donor_id = db.collection('donors').add({
@@ -151,12 +152,15 @@ def addBooksToCatalog(event: firestore_fn.Event):
 
     batch_writes.write() with each log
     update counters
+"""
 
 @https_fn.on_call()
 def check_phone_number_exists(req: https_fn.CallableRequest):
     """
     Checks if a donor with the given phone number already exists.
     """
+
+    validate_volunteer(req)
 
     def is_phone_number(value):
         return isinstance(value, str) and len(value) == 10 and value.isdigit()
