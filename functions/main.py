@@ -165,7 +165,7 @@ def check_phone_number_exists(req: https_fn.CallableRequest):
     validate_volunteer(req)
 
     def is_phone_number(value):
-        return isinstance(value, str) and len(value) == 10 and value.isdigit()
+        return isinstance(value, str) and value[0]=="+" and value[1:].isdigit()
 
     phone_number = req.data.get('phoneNumber')
     if not is_phone_number(phone_number):

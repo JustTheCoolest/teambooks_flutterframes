@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:form_builder_phone_field/form_builder_phone_field.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+
+final firebase_instance = FirebaseFunctions.instanceFor(region: 'asia-south1');
 
 // Data models, previously in firebase_service.dart
 class BookEntry {
@@ -128,7 +131,10 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     });
 
     try {
-      final response = await _checkPhoneNumberExists(phoneNumber);
+      final response = await firebase_instance
+          .httpsCallable('check_phone_number_exists')
+          .call({'phoneNumber': phoneNumber})
+          .then((result) => result.data as Map<String, dynamic>?);
       if (!mounted) return;
 
       setState(() {
