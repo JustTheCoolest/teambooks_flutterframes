@@ -570,3 +570,5 @@ def add_book_to_catalog(req: https_fn.CallableRequest):
 # To deploy these functions:
 # Ensure you have firebase-tools installed and configured.
 # Run `firebase deploy --only functions` from your project's root directory (where firebase.json is).
+#
+
