@@ -66,24 +66,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 
   // --- Placeholder Functions for backend interaction ---
 
-  /// Simulates checking if a phone number exists in the backend.
-  Future<Map<String, dynamic>?> _checkPhoneNumberExists(
-    String phoneNumber,
-  ) async {
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
-    if (phoneNumber == '+911234567890') {
-      return {
-        'exists': true,
-        'donorId': 'donor123',
-        'name': 'Balu',
-        'email': 'balu@test.com',
-        'group': 'Test Apt',
-        'phoneNumber': '+911234567890',
-      };
-    }
-    return {'exists': false};
-  }
-
   /// Simulates submitting the registration to the backend.
   Future<void> _addBookDonation(
     DonorDetails donorDetails,
@@ -127,6 +109,29 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     });
 
     try {
+      final response = await firebase_instance
+          .httpsCallable('check_phone_number_exists')
+          .call({'phoneNumber': phoneNumber})
+          .then((result) => result.data as Map<String, dynamic>?);
+      if (!mounted) return;
+
+      setState(() {
+        _wasOfflineDonorDetails = false;
+        _isExistingDonor = response!['exists'] as bool;
+        if (_isExistingDonor) {
+          _formKey.currentState?.patchValue({
+            'name': response['name'],
+            'email': response['email'],
+            'companyOrApartment': response['group'],
+          });
+          _donorDetailsLocked = true;
+        } else {
+          _donorDetailsLocked = false;
+        }
+        _currentStep = RegistrationStep.donorDetails;
+      });
+    } catch (e) {
+      // Only check connectivity if the Firebase call fails
       try {
         bool hasConnection = await InternetConnectionChecker.instance.hasConnection;
         _wasOfflineDonorDetails = !hasConnection;
@@ -142,32 +147,10 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
           _donorDetailsLocked = false;
           _currentStep = RegistrationStep.donorDetails;
         });
-        return;
-      }
-
-      final response = await firebase_instance
-          .httpsCallable('check_phone_number_exists')
-          .call({'phoneNumber': phoneNumber})
-          .then((result) => result.data as Map<String, dynamic>?);
-      if (!mounted) return;
-
-      setState(() {
-        _isExistingDonor = response!['exists'] as bool;
-        if (_isExistingDonor) {
-          _formKey.currentState?.patchValue({
-            'name': response['name'],
-            'email': response['email'],
-            'companyOrApartment': response['group'],
-          });
-          _donorDetailsLocked = true;
-        } else {
-          _donorDetailsLocked = false;
+      } else {
+        if (mounted) {
+          setState(() => _errorMessage = "Error checking phone: ${e.toString()}");
         }
-        _currentStep = RegistrationStep.donorDetails;
-      });
-    } catch (e) {
-      if (mounted) {
-        setState(() => _errorMessage = "Error checking phone: ${e.toString()}");
       }
     } finally {
       if (mounted) setState(() => _isCheckingPhone = false);
@@ -384,8 +367,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                     TextButton.icon(
                       icon: const Icon(Icons.edit, size: 16),
                       label: const Text('Edit'),
-                      onPressed:
-                          () => setState(() => _donorDetailsLocked = false),
+                      onPressed: () => setState(() => _donorDetailsLocked = false),
                     ),
                 ],
               ),
@@ -393,17 +375,31 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
           const SizedBox(height: 8),
           FormBuilderTextField(
             name: 'name',
-            decoration: const InputDecoration(labelText: 'Name*'),
+            decoration: InputDecoration(
+              labelText: 'Name*',
+              filled: _donorDetailsLocked,
+              fillColor: _donorDetailsLocked ? Colors.grey.shade300 : null,
+            ),
             readOnly: _donorDetailsLocked,
+            style: TextStyle(
+              color: _donorDetailsLocked ? Colors.grey : null,
+            ),
             validator: FormBuilderValidators.required(
               errorText: 'Name is required',
             ),
           ),
           FormBuilderTextField(
             name: 'email',
-            decoration: const InputDecoration(labelText: 'Email (for receipt)'),
+            decoration: InputDecoration(
+              labelText: 'Email (for receipt)',
+              filled: _donorDetailsLocked,
+              fillColor: _donorDetailsLocked ? Colors.grey.shade300 : null,
+            ),
             keyboardType: TextInputType.emailAddress,
             readOnly: _donorDetailsLocked,
+            style: TextStyle(
+              color: _donorDetailsLocked ? Colors.grey : null,
+            ),
             validator: FormBuilderValidators.compose([
               FormBuilderValidators.email(
                 errorText: 'Please enter a valid email address',
@@ -412,8 +408,15 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
           ),
           FormBuilderTextField(
             name: 'companyOrApartment',
-            decoration: const InputDecoration(labelText: 'Company / Apartment'),
+            decoration: InputDecoration(
+              labelText: 'Company / Apartment',
+              filled: _donorDetailsLocked,
+              fillColor: _donorDetailsLocked ? Colors.grey.shade300 : null,
+            ),
             readOnly: _donorDetailsLocked,
+            style: TextStyle(
+              color: _donorDetailsLocked ? Colors.grey : null,
+            ),
           ),
           if (_errorMessage != null &&
               _currentStep == RegistrationStep.donorDetails)

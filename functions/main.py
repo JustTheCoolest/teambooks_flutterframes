@@ -6,6 +6,7 @@ from firebase_functions import https_fn, options, firestore_fn
 from firebase_admin import initialize_app, firestore
 import requests
 import uuid
+from datetime import datetime
 # from datetime import datetime, timedelta # TODO: add to requirements.txt if used for @cache
 
 initialize_app()
@@ -455,20 +456,19 @@ def check_phone_number_exists(req: https_fn.CallableRequest):
 
     donors_ref = db.collection('donors')
     query = donors_ref.where('phoneNumber', '==', phone_number).limit(1)
-    results = query.stream()
+    results = list(query.stream())
 
-    donor_exists = any(results)
-
-    if not donor_exists:
+    if not results:
         return {"exists": False}
 
     donor_doc = results[0]
     donor_id = donor_doc.id
+    donor_name = donor_doc.get('name')
     donor_email = donor_doc.get('email')
     donor_phone = donor_doc.get('phoneNumber')
     donor_group = donor_doc.get('group')
 
-    return {"exists": True, "donorId": donor_id, "email": donor_email, "phoneNumber": donor_phone, "group": donor_group}
+    return {"exists": True, "donorId": donor_id, "name": donor_name, "email": donor_email, "phoneNumber": donor_phone, "group": donor_group}
 
 def add_donor_details(donor_details):
     """
@@ -705,14 +705,8 @@ def get_book_details_internal(isbn):
                 "isbn": isbn
             }
         else:
-            # Return unknown book details rather than raising error
-            return {
-                "title": "Unknown Title",
-                "author": "Unknown Author", 
-                "publisher": "Unknown Publisher",
-                "genre": "Unknown",
-                "isbn": isbn
-            }
+            raise ValueError(f"Could not find details for ISBN {isbn}")
+            
 
 
 def generate_receipt(volunteer_uid, donor_id, copies_details, donor_details):
@@ -735,16 +729,14 @@ def generate_receipt(volunteer_uid, donor_id, copies_details, donor_details):
 
     receipt_lines = [
         f"--- Book Donation Receipt ---",
-        f"Date: {firestore.SERVER_TIMESTAMP}", # Will be converted by Firestore
+        f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"Volunteer: {volunteer_name} ({volunteer_uid})",
         f"Donor: {donor_name} (ID: {donor_id}, Phone: {donor_phone})",
         f"--- Books Donated ---"
     ]
     for i, copy_info in enumerate(copies_details):
-        # Assuming copies_details is a list of dicts with book info
-        title = copy_info.get('title', 'N/A')
-        isbn = copy_info.get('isbn', 'N/A')
-        receipt_lines.append(f"{i+1}. {title} (ISBN: {isbn}) - Copy ID: {copy_info.get('fullId', 'N/A')}")
+        pass # Placeholder for iterating through book details
+        
 
     receipt_lines.append("--- Thank you for your donation! ---")
     return "\n".join(receipt_lines)
@@ -757,33 +749,21 @@ def send_email(to_email, subject, body):
     Placeholder for sending an email.
     """
     if not to_email:
-        print("No email address provided for donor, skipping email.")
+        print("No email address provided, skipping email.")
         return
 
     print(f"Simulating sending email to: {to_email}")
     print(f"Subject: {subject}")
     print(f"Body:\n{body}")
     # In a real implementation:
-    # msg = EmailMessage()
-    # msg.set_content(body)
-    # msg['Subject'] = subject
-    # msg['From'] = YOUR_SENDING_EMAIL_ADDRESS
-    # msg['To'] = to_email
-    # smtp_server.send_message(msg)
-    pass
+
 
 def log_event(event_name, details):
     """
-    Logs an event to Firestore or Cloud Logging.
+    Logs an event to the console/Cloud Logging.
     """
-    print(f"Logging event: {event_name}, Details: {details}")
-    db = firestore.client()
-    db.collection('logs').add({
-        "event": event_name,
-        "timestamp": firestore.SERVER_TIMESTAMP,
-        "details": details
-    })
-
+    print(f"LOG_EVENT: {event_name}", details)
+    
 
 @https_fn.on_call()
 def add_book_to_catalog(req: https_fn.CallableRequest):
