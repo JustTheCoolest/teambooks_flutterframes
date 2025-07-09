@@ -4,6 +4,7 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:form_builder_phone_field/form_builder_phone_field.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 final firebase_instance = FirebaseFunctions.instanceFor(region: 'asia-south1');
 
@@ -56,7 +57,8 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   bool _isCheckingPhone = false;
   bool _isSubmitting = false;
   bool _isExistingDonor = false;
-  bool _donorDetailsLocked = false;
+  bool _donorDetailsLocked = false; 
+  bool? _wasOfflineDonorDetails; 
 
   final _isbnController = TextEditingController();
   final List<BookEntry> _books = [];
@@ -107,19 +109,13 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     final phoneNumber =
         (phoneField as FormBuilderPhoneFieldState).fullNumber.trim();
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(phoneNumber)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(phoneNumber)));
 
     if (phoneNumber.isEmpty) {
       setState(() {
         _isExistingDonor = false;
         _donorDetailsLocked = false;
-        // _formKey.currentState?.patchValue({
-        //   'name': '',
-        //   'email': '',
-        //   'companyOrApartment': '',
-        // });
+        _wasOfflineDonorDetails = false;
         _currentStep = RegistrationStep.donorDetails;
       });
       return;
@@ -131,6 +127,24 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     });
 
     try {
+      try {
+        bool hasConnection = await InternetConnectionChecker.instance.hasConnection;
+        _wasOfflineDonorDetails = !hasConnection;
+      } catch (_) {
+        _wasOfflineDonorDetails = true;
+      }
+
+      if (_wasOfflineDonorDetails == true) {
+        // Act as if phone number does not exist
+        if (!mounted) return;
+        setState(() {
+          _isExistingDonor = false;
+          _donorDetailsLocked = false;
+          _currentStep = RegistrationStep.donorDetails;
+        });
+        return;
+      }
+
       final response = await firebase_instance
           .httpsCallable('check_phone_number_exists')
           .call({'phoneNumber': phoneNumber})
@@ -147,11 +161,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
           });
           _donorDetailsLocked = true;
         } else {
-          // _formKey.currentState?.patchValue({
-          //   'name': '',
-          //   'email': '',
-          //   'companyOrApartment': '',
-          // });
           _donorDetailsLocked = false;
         }
         _currentStep = RegistrationStep.donorDetails;
