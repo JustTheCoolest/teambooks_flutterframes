@@ -65,51 +65,6 @@ class BookRegistrationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkPhoneNumber() async {
-    if (_phoneNumber == null || _phoneNumber!.isEmpty) {
-      _donorExists = false;
-      _existingDonorDetails = null;
-      _errorMessage = "Phone number cannot be empty to check.";
-      notifyListeners();
-      return;
-    }
-    _isVerifyingPhoneNumber = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      final result = await _firebaseService.checkPhoneNumberExists(
-        _phoneNumber!,
-      );
-      _donorExists = result['exists'] as bool? ?? false;
-      if (_donorExists) {
-        // If donor exists, you might want to fetch and prefill more details.
-        // For now, we just acknowledge existence. The cloud function returns donorId.
-        // Let's assume the cloud function `checkPhoneNumberExists` could return basic details
-        // or we make another call. For simplicity, let's say it returns some details.
-        _existingDonorDetails =
-            result['donorData']
-                as Map<String, dynamic>?; // Assuming 'donorData'
-        if (_existingDonorDetails != null) {
-          _name = _existingDonorDetails!['name'] ?? _name;
-          _email = _existingDonorDetails!['email'] ?? _email;
-          _companyOrApartment =
-              _existingDonorDetails!['companyOrApartment'] ??
-              _companyOrApartment;
-        }
-        _successMessage = "Existing donor found.";
-      } else {
-        _existingDonorDetails = null;
-        _successMessage = "New donor.";
-      }
-    } catch (e) {
-      _donorExists = false;
-      _existingDonorDetails = null;
-      _errorMessage = "Error checking phone number: ${e.toString()}";
-    }
-    _isVerifyingPhoneNumber = false;
-    notifyListeners();
-  }
-
   void addBook(String isbn) {
     if (isbn.isNotEmpty && !_books.any((b) => b.isbn == isbn)) {
       _books.add(BookEntry(isbn: isbn));

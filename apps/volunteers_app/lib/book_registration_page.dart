@@ -5,6 +5,7 @@ import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:form_builder_phone_field/form_builder_phone_field.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'constants.dart' as constants;
 
 final firebase_instance = FirebaseFunctions.instanceFor(region: 'asia-south1');
 
@@ -382,7 +383,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             ),
             readOnly: _donorDetailsLocked,
             style: TextStyle(
-              color: _donorDetailsLocked ? Colors.grey : null,
+              color: _donorDetailsLocked ? constants.uneditableTextColor : null,
             ),
             validator: FormBuilderValidators.required(
               errorText: 'Name is required',
@@ -398,7 +399,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             keyboardType: TextInputType.emailAddress,
             readOnly: _donorDetailsLocked,
             style: TextStyle(
-              color: _donorDetailsLocked ? Colors.grey : null,
+              color: _donorDetailsLocked ? constants.uneditableTextColor : null,
             ),
             validator: FormBuilderValidators.compose([
               FormBuilderValidators.email(
@@ -415,7 +416,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             ),
             readOnly: _donorDetailsLocked,
             style: TextStyle(
-              color: _donorDetailsLocked ? Colors.grey : null,
+              color: _donorDetailsLocked ? constants.uneditableTextColor : null,
             ),
           ),
           if (_errorMessage != null &&
