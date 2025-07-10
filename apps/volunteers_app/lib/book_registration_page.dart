@@ -23,13 +23,13 @@ class BookEntry {
 
 class DonorDetails {
   final String? phoneNumber;
-  final String name;
+  final String? name;
   final String? companyOrApartment;
   final String? email;
 
   DonorDetails({
     this.phoneNumber,
-    required this.name,
+    this.name,
     this.companyOrApartment,
     this.email,
   });
@@ -259,7 +259,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     final formValue = _formKey.currentState!.value;
     final donorDetails = DonorDetails(
       phoneNumber: _isAnonymous ? null : formValue['phone'] as String?,
-      name: formValue['name'] as String,
+      name: formValue['name'] as String?,
       email: formValue['email'] as String?,
       companyOrApartment: formValue['companyOrApartment'] as String?,
     );
@@ -546,9 +546,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             ),
             Column(
               children: [
-                ..._books.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final book = entry.value;
+                ...List.generate(_books.length, (i) => _books.length - 1 - i)
+                    .map((index) {
+                  final book = _books[index];
                   final details = book.bookDetails ?? {};
 
                   return Card(
@@ -560,22 +560,34 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (details['message'] != null)
-                                  Text(details['message'], style: TextStyle(color: Colors.red)),
-                                Text('ISBN: ${book.isbn}'),
-                                TextFormField(
+                                  Text(
+                                    details['message'],
+                                    style: TextStyle(
+                                      color: details['message'] == 'No internet'
+                                          ? constants.noInternetColor
+                                          : Colors.red,
+                                    ),
+                                  ),
+                                FormBuilderTextField(
+                                  name: 'book_name_$index',
                                   initialValue: details['name'],
-                                  decoration: InputDecoration(labelText: 'Book Name'),
                                   onChanged: (val) => setState(() => details['name'] = val),
+                                  decoration: InputDecoration(labelText: 'Book Name *'),
+                                  validator: FormBuilderValidators.required(),
                                 ),
-                                TextFormField(
+                                FormBuilderTextField(
+                                  name: 'author_$index',
                                   initialValue: details['author'],
-                                  decoration: InputDecoration(labelText: 'Author'),
                                   onChanged: (val) => setState(() => details['author'] = val),
+                                  decoration: InputDecoration(labelText: 'Author *'),
+                                  validator: FormBuilderValidators.required(),
                                 ),
-                                TextFormField(
+                                FormBuilderTextField(
+                                  name: 'genre_$index',
                                   initialValue: details['genre'],
-                                  decoration: InputDecoration(labelText: 'Genre'),
                                   onChanged: (val) => setState(() => details['genre'] = val),
+                                  decoration: InputDecoration(labelText: 'Genre *'),
+                                  validator: FormBuilderValidators.required(),
                                 ),
                                 Row(
                                   children: [
@@ -583,7 +595,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                                       onPressed: () {
                                         setState(() => details['editing'] = false);
                                       },
-                                      child: Text('Save'),
+                                      child: Text('Verify'),
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
@@ -594,30 +606,28 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                                 ),
                               ],
                             )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('ISBN: ${book.isbn}'),
-                                Text('Name: ${details['name']}'),
-                                Text('Author: ${details['author']}'),
-                                Text('Genre: ${details['genre']}'),
-                                if (book.wasOfflineBookDetails)
-                                  Text('Added while offline', style: TextStyle(color: Colors.orange)),
-                                Row(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        setState(() => details['editing'] = false);
-                                        // Optionally, mark as verified
-                                      },
-                                      child: Text('Verify'),
-                                    ),
+                                    Text('ISBN: ${book.isbn}'),
+                                    Text('Name: ${details['name']}'),
+                                    Text('Author: ${details['author']}'),
+                                    Text('Genre: ${details['genre']}'),
+                                    if (book.wasOfflineBookDetails)
+                                      Text('Added while offline', style: TextStyle(color: Colors.orange)),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
                                     const SizedBox(width: 8),
-                                    TextButton(
+                                    IconButton(
                                       onPressed: () {
                                         setState(() => details['editing'] = true);
                                       },
-                                      child: Text('Edit'),
+                                      icon: const Icon(Icons.edit, size: 16),
                                     ),
                                     IconButton(
                                       icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
@@ -647,3 +657,11 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     );
   }
 }
+
+// Next Steps:
+// - no need to show isOffline
+// - number of books should be verified when submitting
+// - only one book should be in verification/editing mode at a time
+// - disable add button, with a message when maximum number of books is reached
+// - isbn validator
+// - INTERNET CHECKER NOT WORKING??????
