@@ -14,7 +14,7 @@ service cloud.firestore {
           ['donorId', 'donorDetails']
         ) &&
         request.resource.data.volunteerUid == request.auth.uid &&
-        exists(/databases/$(database)/documents/Volunteers/$(request.auth.uid)) &&
+        // exists(/databases/$(database)/documents/Volunteers/$(request.auth.uid)) &&
         request.resource.data.volunteerUid is string &&
         request.resource.data.isbns is list &&
         request.resource.data.isbns.size() > 0 &&
@@ -33,11 +33,9 @@ service cloud.firestore {
         ) &&
         (!('donorId' in request.resource.data) || !('donorDetails' in request.resource.data) || request.resource.data.editDonorIntent == true) &&
         (request.resource.data.editDonorIntent == true || !('donorDetails' in request.resource.data) || request.resource.data.wasOffline == true);
-    }
-
-    match /TestCollection/{doc_id} {
-      allow write: if request.resource.data.keys().hasOnly(['items']) &&
-                     request.resource.data.items is list;
+        // - Follow the existing Firestore architecture
+        // - hasAll + hasOnly for donorDetails
+        // - if wasOffline_donorDetails: then editDonorIntent is null
     }
   }
 }

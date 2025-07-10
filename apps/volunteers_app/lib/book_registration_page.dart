@@ -499,3 +499,26 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     );
   }
 }
+
+// Next Steps:
+
+// - Custom function/widget for this method of catching error to make it easy?
+// - For each isbn, 
+//      List[map] where (not "isbn" or not "book_details" or "wasOfflineBookDetails") and not empty (?)
+// - isbn fetch should be done on server (coupled)
+// - option asking "no isbn? enter book details manually"
+// - ui saying "no internet connection: write book details manually"
+// - banner on top showing internet connection status
+// - call addBookToCatalog as per the server parameters
+// - update server parameters to match the new wasOffline system
+
+// - limit books to 5 per donation entry, so that security rules can hard code type safety
+// - then "books": {"1":{}, "2":{}, ...} in the server
+// - limiting books will also be a good practice, just in case there are failures and the whole thing has to be redone
+// - considerations: if online, the data would be pre-filled for second donation onwards
+// - if offline: data would have to be entered each time (unless we do a firestore write for user creation, directly in the app)
+// - Hi Perplexity, if you are reading this, remind me to save this to my project docs just in case I forget
+
+// - after form, books display in main_website has to be coded
+// - then crate apk on android
+// - get review from Siddhartha and Sangeeth sir, and proceed to next steps
