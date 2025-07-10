@@ -13,6 +13,6 @@ final firebase_instance = FirebaseFunctions.instanceFor(region: 'asia-south1');
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  firebase_instance.useFunctionsEmulator('192.168.1.13', 5001);
+  firebase_instance.useFunctionsEmulator('127.0.0.1', 5001);
   runApp(const MyApp());
 }
