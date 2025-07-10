@@ -96,21 +96,51 @@ class ApproveExistingAccountForm extends StatefulWidget {
   const ApproveExistingAccountForm({super.key});
 
   @override
-  State<ApproveExistingAccountForm> createState() =>
-      _ApproveExistingAccountFormState();
+  State<ApproveExistingAccountForm> createState() => _ApproveExistingAccountFormState();
 }
 
-class _ApproveExistingAccountFormState
-    extends State<ApproveExistingAccountForm> {
+class _ApproveExistingAccountFormState extends State<ApproveExistingAccountForm> {
   final _formKey = GlobalKey<FormState>();
   final _uidController = TextEditingController();
   final _emailController = TextEditingController();
+
+  bool _uidExists = false;
+  bool _emailExists = false;
+  bool _checkingUid = false;
+  bool _checkingEmail = false;
 
   @override
   void dispose() {
     _uidController.dispose();
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> checkUidExists(String uid) async {
+    setState(() {
+      _checkingUid = true;
+      _uidExists = false;
+    });
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    setState(() {
+      _checkingUid = false;
+      _uidExists = doc.exists;
+    });
+  }
+
+  Future<void> checkEmailExists(String email) async {
+    setState(() {
+      _checkingEmail = true;
+      _emailExists = false;
+    });
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .get();
+    setState(() {
+      _checkingEmail = false;
+      _emailExists = querySnapshot.docs.isNotEmpty;
+    });
   }
 
   @override
@@ -123,87 +153,164 @@ class _ApproveExistingAccountFormState
     );
   }
 
-  void showApprovalDialog(BuildContext context) {
+    void showApprovalDialog(BuildContext context) {
     _uidController.clear();
     _emailController.clear();
+    _uidExists = false;
+    _emailExists = false;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Approve Volunteer'),
-          content: Form(
-            key: _formKey,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                TextFormField(
-                  controller: _uidController,
-                  decoration: const InputDecoration(
-                    hintText: "UID of Volunteer's Account",
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> checkUidExists(String uid) async {
+              setState(() {
+                _checkingUid = true;
+                _uidExists = false;
+              });
+              final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+              setState(() {
+                _checkingUid = false;
+                _uidExists = doc.exists;
+              });
+            }
+
+            Future<void> checkEmailExists(String email) async {
+              setState(() {
+                _checkingEmail = true;
+                _emailExists = false;
+              });
+              final querySnapshot = await FirebaseFirestore.instance
+                  .collection('users')
+                  .where('email', isEqualTo: email)
+                  .get();
+              setState(() {
+                _checkingEmail = false;
+                _emailExists = querySnapshot.docs.isNotEmpty;
+              });
+            }
+
+            return AlertDialog(
+              title: const Text('Approve Volunteer'),
+              content: Container(
+                width: 300,
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      TextFormField(
+                        controller: _uidController,
+                        decoration: InputDecoration(
+                          hintText: "UID of Volunteer's Account",
+                          suffixIcon: _checkingUid
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : (_uidExists
+                                  ? const Icon(Icons.check, color: Colors.green)
+                                  : null),
+                        ),
+                        keyboardType: TextInputType.text,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter UID';
+                          }
+                          if (!_uidExists) {
+                            return 'UID does not exist';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          if (value.isNotEmpty) {
+                            checkUidExists(value);
+                          } else {
+                            setState(() {
+                              _uidExists = false;
+                            });
+                          }
+                        },
+                      ),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          hintText: "Email of Volunteer's Account",
+                          suffixIcon: _checkingEmail
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : (_emailExists
+                                  ? const Icon(Icons.check, color: Colors.green)
+                                  : null),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter email';
+                          }
+                          if (!value.contains('@')) {
+                            return 'Please enter a valid email';
+                          }
+                          if (!_emailExists) {
+                            return 'Email does not exist';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          if (value.isNotEmpty) {
+                            checkEmailExists(value);
+                          } else {
+                            setState(() {
+                              _emailExists = false;
+                            });
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                  keyboardType: TextInputType.text,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter UID';
-                    }
-                    return null;
-                  },
                 ),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    hintText: "Email of Volunteer's Account",
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
                   },
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      try {
+                        await approveVolunteer(
+                          uid: _uidController.text,
+                          email: _emailController.text,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Volunteer approved')),
+                        );
+                        Navigator.of(context).pop();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}')),
+                        );
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please correct the errors')),
+                      );
+                    }
+                  },
+                  child: const Text('Approve'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                // Handle the approval logic here
-                if (_formKey.currentState!.validate()) {
-                  try {
-                    await approveVolunteer(
-                      uid: _uidController.text,
-                      email: _emailController.text,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Volunteer approved')),
-                    );
-                    Navigator.of(context).pop(); // Pop only on success
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}')), // Display a cleaner error
-                    );
-                    // Optionally, don't pop the dialog on error, so the user can try again or see the error.
-                    // Navigator.of(context).pop(); 
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please correct the errors')),
-                  );
-                }
-              },
-              child: const Text('Approve'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
