@@ -9,10 +9,16 @@ import 'constants.dart' as constants;
 
 final firebase_instance = FirebaseFunctions.instanceFor(region: 'asia-south1');
 
-// Data models, previously in firebase_service.dart
+Future<bool> isOffline() async {
+  return await InternetConnectionChecker.instance.hasConnection;
+}
+
 class BookEntry {
-  final String isbn;
-  BookEntry({required this.isbn});
+  final String? isbn;
+  final Map<String, dynamic>? bookDetails; // manual entry
+  final bool wasOfflineBookDetails;
+
+  BookEntry({this.isbn, this.bookDetails, this.wasOfflineBookDetails = false});
 }
 
 class DonorDetails {
@@ -58,8 +64,8 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   bool _isCheckingPhone = false;
   bool _isSubmitting = false;
   bool _isExistingDonor = false;
-  bool _donorDetailsLocked = false; 
-  bool? _wasOfflineDonorDetails; 
+  bool _donorDetailsLocked = false;
+  bool? _wasOfflineDonorDetails;
 
   final _isbnController = TextEditingController();
   final List<BookEntry> _books = [];
@@ -70,7 +76,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   /// Simulates submitting the registration to the backend.
   Future<void> _addBookDonation(
     DonorDetails donorDetails,
-    List<String> isbns,
+    List<String?> isbns,
   ) async {
     await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
     debugPrint(
@@ -92,7 +98,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     final phoneNumber =
         (phoneField as FormBuilderPhoneFieldState).fullNumber.trim();
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(phoneNumber)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(phoneNumber)));
 
     if (phoneNumber.isEmpty) {
       setState(() {
@@ -133,12 +141,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       });
     } catch (e) {
       // Only check connectivity if the Firebase call fails
-      try {
-        bool hasConnection = await InternetConnectionChecker.instance.hasConnection;
-        _wasOfflineDonorDetails = !hasConnection;
-      } catch (_) {
-        _wasOfflineDonorDetails = true;
-      }
+      _wasOfflineDonorDetails = await isOffline();
 
       if (_wasOfflineDonorDetails == true) {
         // Act as if phone number does not exist
@@ -150,7 +153,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
         });
       } else {
         if (mounted) {
-          setState(() => _errorMessage = "Error checking phone: ${e.toString()}");
+          setState(
+            () => _errorMessage = "Error checking phone: ${e.toString()}",
+          );
         }
       }
     } finally {
@@ -267,7 +272,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
         }
         break;
       case RegistrationStep.donorDetails:
-        if (formState.fields['name']!.validate()) {
+        if (formState.fields['name']!.validate() &&
+            formState.fields['email']!.validate() &&
+            formState.fields['companyOrApartment']!.validate()) {
           setState(() {
             _errorMessage = null;
             _currentStep = RegistrationStep.bookEntry;
@@ -368,16 +375,17 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                     TextButton.icon(
                       icon: const Icon(Icons.edit, size: 16),
                       label: const Text('Edit'),
-                      onPressed: () => setState(() => _donorDetailsLocked = false),
+                      onPressed:
+                          () => setState(() => _donorDetailsLocked = false),
                     ),
                 ],
               ),
             ),
           const SizedBox(height: 8),
           FormBuilderTextField(
-            name: 'name',
+            name: 'companyOrApartment',
             decoration: InputDecoration(
-              labelText: 'Name*',
+              labelText: 'Apartment (or Company)',
               filled: _donorDetailsLocked,
               fillColor: _donorDetailsLocked ? Colors.grey.shade300 : null,
             ),
@@ -385,10 +393,16 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             style: TextStyle(
               color: _donorDetailsLocked ? constants.uneditableTextColor : null,
             ),
-            validator: FormBuilderValidators.required(
-              errorText: 'Name is required',
-            ),
           ),
+          if (_errorMessage != null &&
+              _currentStep == RegistrationStep.donorDetails)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
           FormBuilderTextField(
             name: 'email',
             decoration: InputDecoration(
@@ -408,9 +422,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             ]),
           ),
           FormBuilderTextField(
-            name: 'companyOrApartment',
+            name: 'name',
             decoration: InputDecoration(
-              labelText: 'Company / Apartment',
+              labelText: 'Name',
               filled: _donorDetailsLocked,
               fillColor: _donorDetailsLocked ? Colors.grey.shade300 : null,
             ),
@@ -419,15 +433,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
               color: _donorDetailsLocked ? constants.uneditableTextColor : null,
             ),
           ),
-          if (_errorMessage != null &&
-              _currentStep == RegistrationStep.donorDetails)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            ),
         ],
       ),
     );
@@ -470,7 +475,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                 margin: const EdgeInsets.symmetric(vertical: 4),
                 child: ListTile(
                   leading: const Icon(Icons.book_outlined),
-                  title: Text(book.isbn),
+                  title: Text(book.isbn!),
                   subtitle: const Text(
                     'Details will be fetched upon submission',
                   ),
@@ -499,26 +504,3 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     );
   }
 }
-
-// Next Steps:
-
-// - Custom function/widget for this method of catching error to make it easy?
-// - For each isbn, 
-//      List[map] where (not "isbn" or not "book_details" or "wasOfflineBookDetails") and not empty (?)
-// - isbn fetch should be done on server (coupled)
-// - option asking "no isbn? enter book details manually"
-// - ui saying "no internet connection: write book details manually"
-// - banner on top showing internet connection status
-// - call addBookToCatalog as per the server parameters
-// - update server parameters to match the new wasOffline system
-
-// - limit books to 5 per donation entry, so that security rules can hard code type safety
-// - then "books": {"1":{}, "2":{}, ...} in the server
-// - limiting books will also be a good practice, just in case there are failures and the whole thing has to be redone
-// - considerations: if online, the data would be pre-filled for second donation onwards
-// - if offline: data would have to be entered each time (unless we do a firestore write for user creation, directly in the app)
-// - Hi Perplexity, if you are reading this, remind me to save this to my project docs just in case I forget
-
-// - after form, books display in main_website has to be coded
-// - then crate apk on android
-// - get review from Siddhartha and Sangeeth sir, and proceed to next steps
