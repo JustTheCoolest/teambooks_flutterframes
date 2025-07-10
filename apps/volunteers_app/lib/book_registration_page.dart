@@ -65,7 +65,8 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   bool _isSubmitting = false;
   bool _isExistingDonor = false;
   bool _donorDetailsLocked = false;
-  bool? _wasOfflineDonorDetails;
+  bool _wasOfflineDonorDetails = false;
+  bool _isFetchingBookDetails = false;
 
   final _isbnController = TextEditingController();
   final List<BookEntry> _books = [];
@@ -164,15 +165,78 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   }
 
   Future<void> _addBook() async {
+    if (_isFetchingBookDetails) return;
+    if (_books.any((b) => b.bookDetails?['editing'] == true)) return;
+
     final isbn = _isbnController.text.trim();
     if (isbn.isEmpty || _books.any((b) => b.isbn == isbn)) {
       _isbnController.clear();
       return;
     }
+
     setState(() {
-      _books.add(BookEntry(isbn: isbn));
-      _isbnController.clear();
+      _errorMessage = null;
+      _isFetchingBookDetails = true;
     });
+
+    try {
+      final result = await firebase_instance
+          .httpsCallable('get_book_details_by_isbn')
+          .call({'isbn': isbn});
+      final data = result.data as Map<String, dynamic>?;
+
+      if (data != null && data['found'] == true) {
+        setState(() {
+          _books.add(BookEntry(
+            isbn: isbn,
+            bookDetails: {
+              'name': data['name'],
+              'author': data['author'],
+              'genre': data['genre'],
+              'editing': false,
+              'message': null,
+            },
+            wasOfflineBookDetails: false,
+          ));
+          _isbnController.clear();
+        });
+      } else {
+        setState(() {
+          _books.add(BookEntry(
+            isbn: isbn,
+            bookDetails: {
+              'name': '',
+              'author': '',
+              'genre': '',
+              'editing': true,
+              'message': 'No book with that ISBN found',
+            },
+            wasOfflineBookDetails: false,
+          ));
+          _isbnController.clear();
+        });
+      }
+    } catch (e) {
+      final offline = await isOffline();
+      setState(() {
+        _books.add(BookEntry(
+          isbn: isbn,
+          bookDetails: {
+            'name': '',
+            'author': '',
+            'genre': '',
+            'editing': true,
+            'message': offline ? 'No internet' : 'Error: ${e.toString()}',
+          },
+          wasOfflineBookDetails: offline,
+        ));
+        _isbnController.clear();
+      });
+    } finally {
+      setState(() {
+        _isFetchingBookDetails = false;
+      });
+    }
   }
 
   Future<void> _submitForm() async {
@@ -280,7 +344,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             _currentStep = RegistrationStep.bookEntry;
           });
         } else {
-          setState(() => _errorMessage = 'Donor name is required to proceed.');
         }
         break;
       case RegistrationStep.bookEntry:
@@ -382,6 +445,15 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
               ),
             ),
           const SizedBox(height: 8),
+          if (_errorMessage != null &&
+              _currentStep == RegistrationStep.donorDetails)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
           FormBuilderTextField(
             name: 'companyOrApartment',
             decoration: InputDecoration(
@@ -394,15 +466,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
               color: _donorDetailsLocked ? constants.uneditableTextColor : null,
             ),
           ),
-          if (_errorMessage != null &&
-              _currentStep == RegistrationStep.donorDetails)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            ),
           FormBuilderTextField(
             name: 'email',
             decoration: InputDecoration(
@@ -418,6 +481,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             validator: FormBuilderValidators.compose([
               FormBuilderValidators.email(
                 errorText: 'Please enter a valid email address',
+                checkNullOrEmpty: false,
               ),
             ]),
           ),
@@ -439,6 +503,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   }
 
   Step _buildBookEntryStep() {
+    bool isEditingAny = _books.any((b) => b.bookDetails?['editing'] == true);
+    bool isbnFieldEnabled = !_isFetchingBookDetails && !isEditingAny;
+
     return Step(
       title: const Text('Step 3: Add Books'),
       isActive: _currentStep == RegistrationStep.bookEntry,
@@ -452,11 +519,23 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
               suffixIcon: IconButton(
                 icon: const Icon(Icons.add_circle_outline),
                 tooltip: 'Add Book',
-                onPressed: _addBook,
+                onPressed: isbnFieldEnabled ? _addBook : null,
               ),
             ),
-            onFieldSubmitted: (_) => _addBook(),
+            onFieldSubmitted: (_) => isbnFieldEnabled ? _addBook() : null,
+            enabled: isbnFieldEnabled,
           ),
+          if (_isFetchingBookDetails)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Row(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 8),
+                  const Text('Fetching book details...'),
+                ],
+              ),
+            ),
           const SizedBox(height: 10),
           if (_books.isEmpty)
             const Center(
@@ -465,31 +544,95 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                 style: TextStyle(color: Colors.grey),
               ),
             ),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _books.length,
-            itemBuilder: (context, index) {
-              final book = _books[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                child: ListTile(
-                  leading: const Icon(Icons.book_outlined),
-                  title: Text(book.isbn!),
-                  subtitle: const Text(
-                    'Details will be fetched upon submission',
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(
-                      Icons.remove_circle_outline,
-                      color: Colors.redAccent,
+            Column(
+              children: [
+                ..._books.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final book = entry.value;
+                  final details = book.bookDetails ?? {};
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: details['editing'] == true
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (details['message'] != null)
+                                  Text(details['message'], style: TextStyle(color: Colors.red)),
+                                Text('ISBN: ${book.isbn}'),
+                                TextFormField(
+                                  initialValue: details['name'],
+                                  decoration: InputDecoration(labelText: 'Book Name'),
+                                  onChanged: (val) => setState(() => details['name'] = val),
+                                ),
+                                TextFormField(
+                                  initialValue: details['author'],
+                                  decoration: InputDecoration(labelText: 'Author'),
+                                  onChanged: (val) => setState(() => details['author'] = val),
+                                ),
+                                TextFormField(
+                                  initialValue: details['genre'],
+                                  decoration: InputDecoration(labelText: 'Genre'),
+                                  onChanged: (val) => setState(() => details['genre'] = val),
+                                ),
+                                Row(
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        setState(() => details['editing'] = false);
+                                      },
+                                      child: Text('Save'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                      onPressed: () => setState(() => _books.removeAt(index)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('ISBN: ${book.isbn}'),
+                                Text('Name: ${details['name']}'),
+                                Text('Author: ${details['author']}'),
+                                Text('Genre: ${details['genre']}'),
+                                if (book.wasOfflineBookDetails)
+                                  Text('Added while offline', style: TextStyle(color: Colors.orange)),
+                                Row(
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        setState(() => details['editing'] = false);
+                                        // Optionally, mark as verified
+                                      },
+                                      child: Text('Verify'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() => details['editing'] = true);
+                                      },
+                                      child: Text('Edit'),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                      onPressed: () => setState(() => _books.removeAt(index)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
-                    onPressed: () => setState(() => _books.removeAt(index)),
-                  ),
-                ),
-              );
-            },
-          ),
+                  );
+                }).toList(),
+              ],
+            ),
+
           if (_errorMessage != null &&
               _currentStep == RegistrationStep.bookEntry)
             Padding(
