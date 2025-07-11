@@ -10,13 +10,13 @@ import 'constants.dart' as constants;
 final firebase_instance = FirebaseFunctions.instanceFor(region: 'asia-south1');
 
 Future<bool> isOffline() async {
-  return await InternetConnectionChecker.instance.hasConnection;
+  return !await InternetConnectionChecker.instance.hasConnection;
 }
 
 class BookEntry {
   final String? isbn;
   final Map<String, dynamic>? bookDetails; // manual entry
-  final bool wasOfflineBookDetails;
+  final bool? wasOfflineBookDetails;
 
   BookEntry({this.isbn, this.bookDetails, this.wasOfflineBookDetails = false});
 }
@@ -164,9 +164,29 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     }
   }
 
-  Future<void> _addBook() async {
+  Future<void> _addBook({required bool with_isbn}) async {
     if (_isFetchingBookDetails) return;
     if (_books.any((b) => b.bookDetails?['editing'] == true)) return;
+
+    setState(() => _errorMessage = null);
+
+    if (!with_isbn) {
+      setState(() {
+        _books.add(
+          BookEntry(
+            isbn: null,
+            bookDetails: {
+              'name': '',
+              'author': '',
+              'genre': '',
+              'editing': true,
+              'message': null,
+            },
+            wasOfflineBookDetails: null,
+          ),
+        );
+      });
+    }
 
     final isbn = _isbnController.text.trim();
     if (isbn.isEmpty || _books.any((b) => b.isbn == isbn)) {
@@ -174,8 +194,11 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       return;
     }
 
+    if (!_formKey.currentState!.fields['isbn']!.validate()) {
+      return;
+    }
+
     setState(() {
-      _errorMessage = null;
       _isFetchingBookDetails = true;
     });
 
@@ -187,49 +210,55 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 
       if (data != null && data['found'] == true) {
         setState(() {
-          _books.add(BookEntry(
-            isbn: isbn,
-            bookDetails: {
-              'name': data['name'],
-              'author': data['author'],
-              'genre': data['genre'],
-              'editing': false,
-              'message': null,
-            },
-            wasOfflineBookDetails: false,
-          ));
+          _books.add(
+            BookEntry(
+              isbn: isbn,
+              bookDetails: {
+                'name': data['name'],
+                'author': data['author'],
+                'genre': data['genre'],
+                'editing': false,
+                'message': null,
+              },
+              wasOfflineBookDetails: false,
+            ),
+          );
           _isbnController.clear();
         });
       } else {
         setState(() {
-          _books.add(BookEntry(
-            isbn: isbn,
-            bookDetails: {
-              'name': '',
-              'author': '',
-              'genre': '',
-              'editing': true,
-              'message': 'No book with that ISBN found',
-            },
-            wasOfflineBookDetails: false,
-          ));
+          _books.add(
+            BookEntry(
+              isbn: isbn,
+              bookDetails: {
+                'name': '',
+                'author': '',
+                'genre': '',
+                'editing': true,
+                'message': 'No book with that ISBN found',
+              },
+              wasOfflineBookDetails: false,
+            ),
+          );
           _isbnController.clear();
         });
       }
     } catch (e) {
       final offline = await isOffline();
       setState(() {
-        _books.add(BookEntry(
-          isbn: isbn,
-          bookDetails: {
-            'name': '',
-            'author': '',
-            'genre': '',
-            'editing': true,
-            'message': offline ? 'No internet' : 'Error: ${e.toString()}',
-          },
-          wasOfflineBookDetails: offline,
-        ));
+        _books.add(
+          BookEntry(
+            isbn: isbn,
+            bookDetails: {
+              'name': '',
+              'author': '',
+              'genre': '',
+              'editing': true,
+              'message': offline ? 'No internet' : 'Error: ${e.toString()}',
+            },
+            wasOfflineBookDetails: offline,
+          ),
+        );
         _isbnController.clear();
       });
     } finally {
@@ -237,6 +266,20 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
         _isFetchingBookDetails = false;
       });
     }
+  }
+
+  void verifyBookDetails(int index, List<String> bookFields) {
+    for (String field in bookFields) {
+      final fieldKey = field.toLowerCase();
+      if (_formKey.currentState!.fields['${fieldKey}_$index']!.validate()) {
+        continue;
+      }
+      return;
+    }
+
+    setState(() {
+      _books[index].bookDetails!['editing'] = false;
+    });
   }
 
   Future<void> _submitForm() async {
@@ -343,8 +386,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
             _errorMessage = null;
             _currentStep = RegistrationStep.bookEntry;
           });
-        } else {
-        }
+        } else {}
         break;
       case RegistrationStep.bookEntry:
         _submitForm();
@@ -444,6 +486,28 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                 ],
               ),
             ),
+          if (_wasOfflineDonorDetails)
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: constants.noInternetColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'No internet:\n Cannot fetch existing donor details.',
+                    ),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Refresh'),
+                    onPressed: () => _checkPhoneNumber(),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           if (_errorMessage != null &&
               _currentStep == RegistrationStep.donorDetails)
@@ -512,19 +576,50 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
-            controller: _isbnController,
-            decoration: InputDecoration(
-              labelText: 'Enter ISBN',
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                tooltip: 'Add Book',
-                onPressed: isbnFieldEnabled ? _addBook : null,
-              ),
+          if (isbnFieldEnabled)
+            Column(
+              children: [
+                FormBuilderTextField(
+                  name: 'isbn',
+                  controller: _isbnController,
+                  decoration: InputDecoration(
+                    labelText: 'Enter ISBN',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      tooltip: 'Add Book',
+                      onPressed:
+                          isbnFieldEnabled
+                              ? () => _addBook(with_isbn: true)
+                              : null,
+                    ),
+                  ),
+                  enabled: isbnFieldEnabled,
+                  validator: FormBuilderValidators.compose([
+                    FormBuilderValidators.required(
+                      errorText: 'ISBN is required',
+                    ),
+                    (value) {
+                      String pattern = r'^\d{10}(\d{3})?$';
+                      RegExp regex = RegExp(pattern);
+                      if (!regex.hasMatch(value!)) {
+                        return 'Enter Valid ISBN (10 or 13 digits only)';
+                      } else {
+                        return null;
+                      }
+                    },
+                  ]),
+                ),
+                Text("or"),
+                ElevatedButton(
+                  onPressed: () => _addBook(with_isbn: false),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    minimumSize: const Size(double.infinity, 0),
+                  ),
+                  child: const Text('Create Book without ISBN'),
+                ),
+              ],
             ),
-            onFieldSubmitted: (_) => isbnFieldEnabled ? _addBook() : null,
-            enabled: isbnFieldEnabled,
-          ),
           if (_isFetchingBookDetails)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
@@ -544,69 +639,76 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                 style: TextStyle(color: Colors.grey),
               ),
             ),
-            Column(
-              children: [
-                ...List.generate(_books.length, (i) => _books.length - 1 - i)
-                    .map((index) {
-                  final book = _books[index];
-                  final details = book.bookDetails ?? {};
+          Column(
+            children: [
+              ...List.generate(
+                _books.length,
+                (i) => _books.length - 1 - i,
+              ).map((index) {
+                final book = _books[index];
+                final details = book.bookDetails ?? {};
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: details['editing'] == true
-                          ? Column(
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child:
+                        details['editing'] == true
+                            ? Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (details['message'] != null)
                                   Text(
                                     details['message'],
                                     style: TextStyle(
-                                      color: details['message'] == 'No internet'
-                                          ? constants.noInternetColor
-                                          : Colors.red,
+                                      color:
+                                          details['message'] == 'No internet'
+                                              ? constants.noInternetColor
+                                              : Colors.red,
                                     ),
                                   ),
-                                FormBuilderTextField(
-                                  name: 'book_name_$index',
-                                  initialValue: details['name'],
-                                  onChanged: (val) => setState(() => details['name'] = val),
-                                  decoration: InputDecoration(labelText: 'Book Name *'),
-                                  validator: FormBuilderValidators.required(),
-                                ),
-                                FormBuilderTextField(
-                                  name: 'author_$index',
-                                  initialValue: details['author'],
-                                  onChanged: (val) => setState(() => details['author'] = val),
-                                  decoration: InputDecoration(labelText: 'Author *'),
-                                  validator: FormBuilderValidators.required(),
-                                ),
-                                FormBuilderTextField(
-                                  name: 'genre_$index',
-                                  initialValue: details['genre'],
-                                  onChanged: (val) => setState(() => details['genre'] = val),
-                                  decoration: InputDecoration(labelText: 'Genre *'),
-                                  validator: FormBuilderValidators.required(),
-                                ),
+                                for (String bookField in constants.bookFields)
+                                  FormBuilderTextField(
+                                    name: '${bookField.toLowerCase()}_$index',
+                                    initialValue:
+                                        details[bookField.toLowerCase()],
+                                    onChanged:
+                                        (val) => setState(
+                                          () =>
+                                              details[bookField.toLowerCase()] =
+                                                  val,
+                                        ),
+                                    decoration: InputDecoration(
+                                      labelText: '$bookField *',
+                                    ),
+                                    validator: FormBuilderValidators.required(),
+                                  ),
                                 Row(
                                   children: [
                                     ElevatedButton(
-                                      onPressed: () {
-                                        setState(() => details['editing'] = false);
-                                      },
-                                      child: Text('Verify'),
+                                      onPressed:
+                                          () => verifyBookDetails(
+                                            index,
+                                            constants.bookFields,
+                                          ),
+                                      child: Text(details['editing'] ? 'Save' : 'Verify'),
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
-                                      icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                                      onPressed: () => setState(() => _books.removeAt(index)),
+                                      icon: Icon(
+                                        Icons.remove_circle_outline,
+                                        color: Colors.redAccent,
+                                      ),
+                                      onPressed:
+                                          () => setState(
+                                            () => _books.removeAt(index),
+                                          ),
                                     ),
                                   ],
                                 ),
                               ],
                             )
-                          : Row(
+                            : Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
@@ -616,8 +718,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                                     Text('Name: ${details['name']}'),
                                     Text('Author: ${details['author']}'),
                                     Text('Genre: ${details['genre']}'),
-                                    if (book.wasOfflineBookDetails)
-                                      Text('Added while offline', style: TextStyle(color: Colors.orange)),
                                   ],
                                 ),
                                 Column(
@@ -625,24 +725,31 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                                     const SizedBox(width: 8),
                                     IconButton(
                                       onPressed: () {
-                                        setState(() => details['editing'] = true);
+                                        setState(
+                                          () => details['editing'] = true,
+                                        );
                                       },
                                       icon: const Icon(Icons.edit, size: 16),
                                     ),
                                     IconButton(
-                                      icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                                      onPressed: () => setState(() => _books.removeAt(index)),
+                                      icon: Icon(
+                                        Icons.remove_circle_outline,
+                                        color: Colors.redAccent,
+                                      ),
+                                      onPressed:
+                                          () => setState(
+                                            () => _books.removeAt(index),
+                                          ),
                                     ),
                                   ],
                                 ),
                               ],
                             ),
-                    ),
-                  );
-                }).toList(),
-              ],
-            ),
-
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
           if (_errorMessage != null &&
               _currentStep == RegistrationStep.bookEntry)
             Padding(
@@ -659,9 +766,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 }
 
 // Next Steps:
-// - no need to show isOffline
 // - number of books should be verified when submitting
 // - only one book should be in verification/editing mode at a time
+// - alt: submission validation should check if any book is in editing mode
 // - disable add button, with a message when maximum number of books is reached
-// - isbn validator
 // - INTERNET CHECKER NOT WORKING??????
+// - experiment venv porting (in a different branch)
