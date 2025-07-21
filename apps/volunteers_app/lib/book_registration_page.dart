@@ -341,9 +341,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 
   Future<void> _submitForm() async {
     if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
-      setState(
-        () => _errorMessage = 'Please correct the errors before submitting.',
-      );
       return;
     }
     if (_books.isEmpty) {

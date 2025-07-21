@@ -5,3 +5,7 @@ const Color uneditableTextColor = Colors.blueGrey;
 const Color noInternetColor = Colors.amber;
 
 const List<String> bookFields = ['Name', 'Author', 'Genre'];
+
+// NOTE: Firestore security rules must be updated correspondingly
+const int maxBooks = 10; 
+const Color maxBooksReachedColor = Colors.green;
