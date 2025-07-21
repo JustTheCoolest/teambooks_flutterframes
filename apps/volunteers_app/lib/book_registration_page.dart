@@ -4,6 +4,8 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:form_builder_phone_field/form_builder_phone_field.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'constants.dart' as constants;
 
@@ -15,24 +17,75 @@ Future<bool> isOffline() async {
 
 class BookEntry {
   final String? isbn;
-  final Map<String, dynamic>? bookDetails; // manual entry
+  final Map<String, dynamic>? bookDetails;
   final bool? wasOfflineBookDetails;
 
   BookEntry({this.isbn, this.bookDetails, this.wasOfflineBookDetails = false});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'isbn': isbn,
+      'bookDetails': bookDetails,
+      'wasOfflineBookDetails': wasOfflineBookDetails,
+    };
+  }
 }
 
 class DonorDetails {
+  final String? donorId;
   final String? phoneNumber;
   final String? name;
   final String? companyOrApartment;
   final String? email;
+  final bool? donorWriteIntent;
+  final bool wasOfflineDonorDetails;
 
   DonorDetails({
+    this.donorId,
     this.phoneNumber,
     this.name,
     this.companyOrApartment,
     this.email,
+    this.donorWriteIntent,
+    required this.wasOfflineDonorDetails,
   });
+
+  Map<String, dynamic> toJson() {
+    if (wasOfflineDonorDetails) {
+      return {
+        'phoneNumber': phoneNumber!,
+        'name': name!,
+        'companyOrApartment': companyOrApartment!,
+        'email': email!,
+        'wasOfflineDonorDetails': wasOfflineDonorDetails!,
+      };
+    }
+    if (donorWriteIntent == null) {
+      throw ArgumentError(
+        'donorWriteIntent must be provided if not wasOfflineDonorDetails',
+      );
+    }
+    if (donorWriteIntent!) {
+      return {
+        'donorId': donorId!,
+        'phoneNumber': phoneNumber!,
+        'name': name!,
+        'companyOrApartment': companyOrApartment!,
+        'email': email!,
+        'donorWriteIntent': donorWriteIntent!,
+        'wasOfflineDonorDetails': wasOfflineDonorDetails!,
+      };
+    }
+    if (!donorWriteIntent!) {
+      return {
+        'donorId': donorId!,
+        'wasOfflineDonorDetails': wasOfflineDonorDetails!,
+      };
+    }
+    throw ArgumentError(
+      'Invalid wasOfflineDonorDetails and donorWriteIntent combination',
+    );
+  }
 }
 
 class BookRegistrationPage extends StatelessWidget {
@@ -60,6 +113,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   final _formKey = GlobalKey<FormBuilderState>();
 
   RegistrationStep _currentStep = RegistrationStep.donorType;
+
+  String? _donorUid;
+
   bool _isAnonymous = false;
   bool _isCheckingPhone = false;
   bool _isSubmitting = false;
@@ -71,20 +127,6 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
   final _isbnController = TextEditingController();
   final List<BookEntry> _books = [];
   String? _errorMessage;
-
-  // --- Placeholder Functions for backend interaction ---
-
-  /// Simulates submitting the registration to the backend.
-  Future<void> _addBookDonation(
-    DonorDetails donorDetails,
-    List<String?> isbns,
-  ) async {
-    await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
-    debugPrint(
-      'Registering donor: ${donorDetails.name} with ${isbns.length} books.',
-    );
-    // Simulate success, no return value needed for Future<void>
-  }
 
   @override
   void dispose() {
@@ -128,6 +170,7 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       setState(() {
         _wasOfflineDonorDetails = false;
         _isExistingDonor = response!['exists'] as bool;
+        _donorUid = response['donorId'] as String?;
         if (_isExistingDonor) {
           _formKey.currentState?.patchValue({
             'name': response['name'],
@@ -282,6 +325,20 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     });
   }
 
+  Future<void> _addBookDonation(
+    DonorDetails? donorDetails,
+    List<BookEntry> books,
+  ) async {
+    final collection = FirebaseFirestore.instance.collection('CatalogQueue');
+    await collection.add({
+      'volunteerUid': FirebaseAuth.instance.currentUser?.uid,
+      'isAnonymous': _isAnonymous,
+      'donorDetails': donorDetails?.toJson(),
+      'books': books.map((b) => b.toJson()).toList(),
+      'donationTimestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> _submitForm() async {
     if (!(_formKey.currentState?.saveAndValidate() ?? false)) {
       setState(
@@ -300,16 +357,21 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
     });
 
     final formValue = _formKey.currentState!.value;
-    final donorDetails = DonorDetails(
-      phoneNumber: _isAnonymous ? null : formValue['phone'] as String?,
-      name: formValue['name'] as String?,
-      email: formValue['email'] as String?,
-      companyOrApartment: formValue['companyOrApartment'] as String?,
-    );
-    final isbns = _books.map((b) => b.isbn).toList();
+    final donorDetails =
+        _isAnonymous
+            ? null
+            : DonorDetails(
+              donorId: _donorUid,
+              phoneNumber: formValue['phone'] as String?,
+              name: formValue['name'] as String?,
+              email: formValue['email'] as String?,
+              companyOrApartment: formValue['companyOrApartment'] as String?,
+              donorWriteIntent: !_wasOfflineDonorDetails,
+              wasOfflineDonorDetails: _wasOfflineDonorDetails,
+            );
 
     try {
-      await _addBookDonation(donorDetails, isbns);
+      await _addBookDonation(donorDetails, _books);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Donation submitted successfully!')),
@@ -568,7 +630,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 
   Step _buildBookEntryStep() {
     bool isEditingAny = _books.any((b) => b.bookDetails?['editing'] == true);
-    bool isbnFieldEnabled = !_isFetchingBookDetails && !isEditingAny;
+    final bool isBookLimitReached = _books.length >= constants.maxBooks;
+    bool isbnFieldEnabled =
+        !_isFetchingBookDetails && !isEditingAny && !isBookLimitReached;
 
     return Step(
       title: const Text('Step 3: Add Books'),
@@ -576,6 +640,17 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isBookLimitReached)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                'Maximum number of books (${constants.maxBooks}) reached.',
+                style: TextStyle(
+                  color: constants.maxBooksReachedColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           if (isbnFieldEnabled)
             Column(
               children: [
@@ -691,7 +766,9 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
                                             index,
                                             constants.bookFields,
                                           ),
-                                      child: Text(details['editing'] ? 'Save' : 'Verify'),
+                                      child: Text(
+                                        details['editing'] ? 'Save' : 'Verify',
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
@@ -769,6 +846,4 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 // - number of books should be verified when submitting
 // - only one book should be in verification/editing mode at a time
 // - alt: submission validation should check if any book is in editing mode
-// - disable add button, with a message when maximum number of books is reached
-// - INTERNET CHECKER NOT WORKING??????
-// - experiment venv porting (in a different branch)
+// - disable add button, with a message when maximum number of books is reached]
