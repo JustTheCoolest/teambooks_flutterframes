@@ -1,4 +1,4 @@
-rules_version='2'
+rules_version = '2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -7,35 +7,65 @@ service cloud.firestore {
       return request.resource.data.keys().hasAll(required) &&
         request.resource.data.keys().hasOnly(allAllowedFields);
     }
+    function isRole(role) {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get(['roles', role], false) == true;
+    }
+    function validDonorDetails(details) {
+      return details is map &&
+        verifyFields(
+          ['phoneNumber', 'name', 'companyOrApartment', 'email', 'wasOfflineDonorDetails'],
+          []
+        ) &&
+        details.phoneNumber is string &&
+        details.name is string &&
+        details.companyOrApartment is string &&
+        details.email is string &&
+        details.wasOfflineDonorDetails is bool;
+    }
+    function validBookEntry(book) {
+      return book is map &&
+        verifyFields(
+          ['isbn', 'bookDetails', 'wasOfflineBookDetails'],
+          []
+        ) &&
+        (book.isbn == null || book.isbn is string) &&
+        book.bookDetails is map &&
+        book.wasOfflineBookDetails is bool;
+    }
     match /CatalogQueue/{donation_id} {
       allow create: if
+        // Top-level required fields and no extra fields
         verifyFields(
-          ['volunteerUid', 'isbns', 'wasOffline', 'editDonorIntent', 'timestamp'],
-          ['donorId', 'donorDetails']
+          ['volunteerUid', 'isAnonymous', 'books', 'donationTimestamp', 'registrationTimestamp'],
+          ['donorDetails']
         ) &&
+
         request.resource.data.volunteerUid == request.auth.uid &&
-        // exists(/databases/$(database)/documents/Volunteers/$(request.auth.uid)) &&
-        request.resource.data.volunteerUid is string &&
-        request.resource.data.isbns is list &&
-        request.resource.data.isbns.size() > 0 &&
-        request.resource.data.wasOffline is bool &&
-        request.resource.data.editDonorIntent is bool &&
-        request.resource.data.timestamp is timestamp &&
-        (!('donorId' in request.resource.data) || request.resource.data.donorId is string) &&
-        (!('donorDetails' in request.resource.data) ||
-          (request.resource.data.donorDetails is map &&
-           request.resource.data.donorDetails.keys().hasAll(['name', 'phoneNumber', 'email', 'apartment/company']) &&
-           request.resource.data.donorDetails.name is string &&
-           request.resource.data.donorDetails.phoneNumber is string &&
-           request.resource.data.donorDetails.email is string &&
-           request.resource.data.donorDetails['apartment/company'] is string
+
+        request.resource.data.isAnonymous is bool &&
+
+        request.resource.data.books is list &&
+        request.resource.data.books.size() > 0 &&
+
+        request.resource.data.donationTimestamp is timestamp &&
+
+        request.resource.data.registrationTimestamp is timestamp &&
+        
+        isRole('volunteer') &&
+
+        // Validate each book entry strictly
+        request.resource.data.books.hasOnly([
+          b => validBookEntry(b)
+        ]) &&
+        // Donor details validation with strict fields
+        (
+          request.resource.data.isAnonymous == true ||
+          (
+            'donorDetails' in request.resource.data &&
+            validDonorDetails(request.resource.data.donorDetails)
           )
-        ) &&
-        (!('donorId' in request.resource.data) || !('donorDetails' in request.resource.data) || request.resource.data.editDonorIntent == true) &&
-        (request.resource.data.editDonorIntent == true || !('donorDetails' in request.resource.data) || request.resource.data.wasOffline == true);
-        // - Follow the existing Firestore architecture
-        // - hasAll + hasOnly for donorDetails
-        // - if wasOffline_donorDetails: then editDonorIntent is null
+        );
     }
   }
 }

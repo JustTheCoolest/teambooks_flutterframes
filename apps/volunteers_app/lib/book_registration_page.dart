@@ -335,7 +335,8 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
       'isAnonymous': _isAnonymous,
       'donorDetails': donorDetails?.toJson(),
       'books': books.map((b) => b.toJson()).toList(),
-      'donationTimestamp': FieldValue.serverTimestamp(),
+      'donationTimestamp': DateTime.now(),
+      'registrationTimestamp': FieldValue.serverTimestamp(),
     });
   }
 
@@ -843,4 +844,3 @@ class _BookRegistrationFormState extends State<BookRegistrationForm> {
 // - number of books should be verified when submitting
 // - only one book should be in verification/editing mode at a time
 // - alt: submission validation should check if any book is in editing mode
-// - disable add button, with a message when maximum number of books is reached]
